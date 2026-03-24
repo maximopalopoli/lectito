@@ -1,54 +1,119 @@
-import { Pressable, Text, View } from "react-native";
+import { useState, useMemo } from "react";
+import { FlatList, Pressable, Text, View } from "react-native";
 
 import { useBooksStore } from "@/store/books";
+import type { Book, BookStatus } from "@/types";
+
+const TABS: { label: string; status: BookStatus }[] = [
+  { label: "Quiero leer", status: "TBR" },
+  { label: "Leyendo", status: "READING" },
+  { label: "Leídos", status: "DONE" },
+  { label: "Abandonados", status: "DNF" },
+];
+
+const TEST_BOOKS: Omit<Book, "id" | "addedAt" | "currentPage">[] = [
+  { title: "Cien años de soledad", authors: ["Gabriel García Márquez"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 417, status: "TBR" },
+  { title: "Rayuela", authors: ["Julio Cortázar"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 600, status: "READING" },
+  { title: "Ficciones", authors: ["Jorge Luis Borges"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 174, status: "DONE" },
+  { title: "2666", authors: ["Roberto Bolaño"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 1120, status: "DNF" },
+];
+
+let testIndex = 0;
 
 export default function LibraryScreen() {
+  const [activeTab, setActiveTab] = useState<BookStatus>("TBR");
   const books = useBooksStore((s) => s.books);
   const addBook = useBooksStore((s) => s.addBook);
   const deleteBook = useBooksStore((s) => s.deleteBook);
 
-  return (
-    <View style={{ flex: 1, padding: 20, paddingTop: 60 }}>
-      <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 16 }}>
-        Biblioteca
-      </Text>
+  const filteredBooks = useMemo(
+    () => books.filter((b) => b.status === activeTab),
+    [books, activeTab],
+  );
 
-      <Pressable
-        onPress={() =>
-          addBook({
-            title: "Cien años de soledad",
-            authors: ["Gabriel García Márquez"],
-            coverUrl: null,
-            isbn13: "9780060883287",
-            isbn10: null,
-            pageCount: 417,
-            status: "TBR",
-          })
-        }
+  return (
+    <View style={{ flex: 1, backgroundColor: "#fff", paddingTop: 60 }}>
+      {/* Header */}
+      <View
         style={{
-          backgroundColor: "#007AFF",
-          padding: 12,
-          borderRadius: 8,
-          marginBottom: 16,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          paddingHorizontal: 20,
+          marginBottom: 12,
         }}
       >
-        <Text style={{ color: "white", textAlign: "center", fontWeight: "600" }}>
-          + Agregar libro de prueba
-        </Text>
-      </Pressable>
+        <Text style={{ fontSize: 28, fontWeight: "bold" }}>Biblioteca</Text>
+        <Pressable
+          onPress={() => {
+            addBook(TEST_BOOKS[testIndex % TEST_BOOKS.length]);
+            testIndex++;
+          }}
+          style={{
+            backgroundColor: "#007AFF",
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginTop: -2 }}>+</Text>
+        </Pressable>
+      </View>
 
-      {books.length === 0 ? (
-        <Text style={{ color: "#888", textAlign: "center", marginTop: 40 }}>
-          No hay libros aún. Toca el botón para agregar uno.
-        </Text>
-      ) : (
-        books.map((book) => (
+      {/* Tabs */}
+      <View
+        style={{
+          flexDirection: "row",
+          paddingHorizontal: 12,
+          marginBottom: 12,
+        }}
+      >
+        {TABS.map((tab) => {
+          const isActive = tab.status === activeTab;
+          return (
+            <Pressable
+              key={tab.status}
+              onPress={() => setActiveTab(tab.status)}
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                borderBottomWidth: 2,
+                borderBottomColor: isActive ? "#007AFF" : "#e0e0e0",
+              }}
+            >
+              <Text
+                style={{
+                  textAlign: "center",
+                  fontSize: 13,
+                  fontWeight: isActive ? "700" : "400",
+                  color: isActive ? "#007AFF" : "#888",
+                }}
+              >
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Book list */}
+      <FlatList
+        data={filteredBooks}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+        ListEmptyComponent={
+          <Text style={{ color: "#888", textAlign: "center", marginTop: 60 }}>
+            No hay libros en esta estantería.
+          </Text>
+        }
+        renderItem={({ item }) => (
           <View
-            key={book.id}
             style={{
               padding: 12,
-              backgroundColor: "#f0f0f0",
-              borderRadius: 8,
+              backgroundColor: "#f5f5f5",
+              borderRadius: 10,
               marginBottom: 8,
               flexDirection: "row",
               justifyContent: "space-between",
@@ -56,17 +121,20 @@ export default function LibraryScreen() {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "600" }}>{book.title}</Text>
-              <Text style={{ color: "#666", fontSize: 13 }}>
-                {book.authors.join(", ")} · {book.status} · {book.pageCount} pp
+              <Text style={{ fontWeight: "600", fontSize: 15 }}>{item.title}</Text>
+              <Text style={{ color: "#666", fontSize: 13, marginTop: 2 }}>
+                {item.authors.join(", ")} · {item.pageCount} pp
               </Text>
             </View>
-            <Pressable onPress={() => deleteBook(book.id)}>
-              <Text style={{ color: "red", fontSize: 18 }}>✕</Text>
+            <Pressable
+              onPress={() => deleteBook(item.id)}
+              style={{ padding: 8 }}
+            >
+              <Text style={{ color: "#c00", fontSize: 16 }}>✕</Text>
             </Pressable>
           </View>
-        ))
-      )}
+        )}
+      />
     </View>
   );
 }
