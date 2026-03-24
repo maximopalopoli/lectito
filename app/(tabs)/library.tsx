@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 
 import BookCard from "@/components/BookCard";
 import { useBooksStore } from "@/store/books";
@@ -23,6 +24,7 @@ let testIndex = 0;
 
 export default function LibraryScreen() {
   const [activeTab, setActiveTab] = useState<BookStatus>("TBR");
+  const router = useRouter();
   const books = useBooksStore((s) => s.books);
   const addBook = useBooksStore((s) => s.addBook);
   const deleteBook = useBooksStore((s) => s.deleteBook);
@@ -112,6 +114,7 @@ export default function LibraryScreen() {
         renderItem={({ item }) => (
           <BookCard
             book={item}
+            onPress={() => router.push(`/book/${item.id}`)}
             onDelete={() => deleteBook(item.id)}
           />
         )}
