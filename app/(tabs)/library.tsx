@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 
+import BookCard from "@/components/BookCard";
 import { useBooksStore } from "@/store/books";
 import type { Book, BookStatus } from "@/types";
 
@@ -109,30 +110,10 @@ export default function LibraryScreen() {
           </Text>
         }
         renderItem={({ item }) => (
-          <View
-            style={{
-              padding: 12,
-              backgroundColor: "#f5f5f5",
-              borderRadius: 10,
-              marginBottom: 8,
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "600", fontSize: 15 }}>{item.title}</Text>
-              <Text style={{ color: "#666", fontSize: 13, marginTop: 2 }}>
-                {item.authors.join(", ")} · {item.pageCount} pp
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => deleteBook(item.id)}
-              style={{ padding: 8 }}
-            >
-              <Text style={{ color: "#c00", fontSize: 16 }}>✕</Text>
-            </Pressable>
-          </View>
+          <BookCard
+            book={item}
+            onDelete={() => deleteBook(item.id)}
+          />
         )}
       />
     </View>
