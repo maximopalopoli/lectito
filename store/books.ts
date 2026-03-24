@@ -2,6 +2,29 @@ import { create } from 'zustand';
 
 import type { Book, BookStatus } from '@/types';
 
+const STORAGE_KEY = 'aleph-books';
+
+function loadBooks(): Book[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Ignore
+  }
+  return [];
+}
+
+function saveBooks(books: Book[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+  } catch {
+    // Ignore
+  }
+}
+
 export interface BooksState {
   books: Book[];
   addBook: (book: Omit<Book, 'id' | 'addedAt' | 'currentPage'>) => void;
@@ -11,11 +34,11 @@ export interface BooksState {
 }
 
 export const useBooksStore = create<BooksState>()((set) => ({
-  books: [],
+  books: loadBooks(),
 
   addBook: (book) =>
-    set((state) => ({
-      books: [
+    set((state) => {
+      const books = [
         ...state.books,
         {
           ...book,
@@ -23,25 +46,33 @@ export const useBooksStore = create<BooksState>()((set) => ({
           addedAt: new Date().toISOString(),
           currentPage: 0,
         },
-      ],
-    })),
+      ];
+      saveBooks(books);
+      return { books };
+    }),
 
   updateBook: (id, updates) =>
-    set((state) => ({
-      books: state.books.map((b) =>
+    set((state) => {
+      const books = state.books.map((b) =>
         b.id === id ? { ...b, ...updates } : b,
-      ),
-    })),
+      );
+      saveBooks(books);
+      return { books };
+    }),
 
   deleteBook: (id) =>
-    set((state) => ({
-      books: state.books.filter((b) => b.id !== id),
-    })),
+    set((state) => {
+      const books = state.books.filter((b) => b.id !== id);
+      saveBooks(books);
+      return { books };
+    }),
 
   changeStatus: (id, status) =>
-    set((state) => ({
-      books: state.books.map((b) =>
+    set((state) => {
+      const books = state.books.map((b) =>
         b.id === id ? { ...b, status } : b,
-      ),
-    })),
+      );
+      saveBooks(books);
+      return { books };
+    }),
 }));
