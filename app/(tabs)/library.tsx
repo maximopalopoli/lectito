@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCard from "@/components/BookCard";
 import { useBooksStore } from "@/store/books";
 import type { BookStatus } from "@/types";
@@ -12,6 +15,20 @@ const TABS: { label: string; status: BookStatus }[] = [
   { label: "Leídos", status: "DONE" },
   { label: "Abandonados", status: "DNF" },
 ];
+
+const EMPTY_ICONS: Record<BookStatus, keyof typeof Ionicons.glyphMap> = {
+  TBR: "bookmark-outline",
+  READING: "book-outline",
+  DONE: "checkmark-circle-outline",
+  DNF: "close-circle-outline",
+};
+
+const EMPTY_MESSAGES: Record<BookStatus, string> = {
+  TBR: "Agregá libros que quieras leer.",
+  READING: "Empezá a leer un libro de tu lista.",
+  DONE: "Todavía no terminaste ningún libro.",
+  DNF: "No hay libros abandonados.",
+};
 
 export default function LibraryScreen() {
   const [activeTab, setActiveTab] = useState<BookStatus>("TBR");
@@ -37,8 +54,10 @@ export default function LibraryScreen() {
         }}
       >
         <Text style={{ fontSize: 28, fontWeight: "bold" }}>Biblioteca</Text>
-        <Pressable
+        <AnimatedPressable
           onPress={() => router.push("/book/add")}
+          haptic="medium"
+          scaleDown={0.9}
           style={{
             backgroundColor: "#007AFF",
             width: 36,
@@ -49,7 +68,7 @@ export default function LibraryScreen() {
           }}
         >
           <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginTop: -2 }}>+</Text>
-        </Pressable>
+        </AnimatedPressable>
       </View>
 
       {/* Tabs */}
@@ -65,7 +84,10 @@ export default function LibraryScreen() {
           return (
             <Pressable
               key={tab.status}
-              onPress={() => setActiveTab(tab.status)}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setActiveTab(tab.status);
+              }}
               style={{
                 flex: 1,
                 paddingVertical: 8,
@@ -94,9 +116,37 @@ export default function LibraryScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
         ListEmptyComponent={
-          <Text style={{ color: "#888", textAlign: "center", marginTop: 60 }}>
-            No hay libros en esta estantería.
-          </Text>
+          <View style={{ alignItems: "center", marginTop: 60, paddingHorizontal: 32 }}>
+            <Ionicons
+              name={EMPTY_ICONS[activeTab]}
+              size={48}
+              color="#ccc"
+              style={{ marginBottom: 12 }}
+            />
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#666", marginBottom: 4, textAlign: "center" }}>
+              No hay libros acá
+            </Text>
+            <Text style={{ color: "#999", textAlign: "center", fontSize: 14 }}>
+              {EMPTY_MESSAGES[activeTab]}
+            </Text>
+            {activeTab === "TBR" && (
+              <AnimatedPressable
+                onPress={() => router.push("/book/add")}
+                haptic="medium"
+                style={{
+                  backgroundColor: "#007AFF",
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  marginTop: 16,
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+                  Agregar libro
+                </Text>
+              </AnimatedPressable>
+            )}
+          </View>
         }
         renderItem={({ item }) => (
           <BookCard

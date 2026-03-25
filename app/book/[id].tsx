@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
 import type { BookStatus } from "@/types";
@@ -49,7 +50,7 @@ export default function BookDetailScreen() {
 
   const handleSavePage = () => {
     const page = parseInt(pageInput, 10);
-    if (!isNaN(page) && page >= 0 && page <= book.pageCount) {
+    if (!isNaN(page) && page >= book.currentPage && page <= book.pageCount) {
       updateBook(book.id, { currentPage: page });
       setPageInput("");
       setShowPageInput(false);
@@ -174,7 +175,7 @@ export default function BookDetailScreen() {
             <TextInput
               value={pageInput}
               onChangeText={setPageInput}
-              placeholder={`Página actual (0-${book.pageCount})`}
+              placeholder={`Página actual (${book.currentPage}-${book.pageCount})`}
               keyboardType="number-pad"
               style={{
                 flex: 1,
@@ -336,8 +337,9 @@ function ActionButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      haptic="medium"
       style={{
         backgroundColor: color,
         paddingVertical: 12,
@@ -348,6 +350,6 @@ function ActionButton({
       <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }

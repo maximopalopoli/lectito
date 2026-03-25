@@ -1,6 +1,8 @@
 import { Image, Pressable, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 
 import type { Book } from "@/types";
+import AnimatedPressable from "./AnimatedPressable";
 
 interface BookCardProps {
   book: Book;
@@ -17,8 +19,9 @@ const STATUS_LABEL: Record<Book["status"], string> = {
 
 export default function BookCard({ book, onPress, onDelete }: BookCardProps) {
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      haptic="light"
       style={{
         flexDirection: "row",
         backgroundColor: "#f5f5f5",
@@ -68,10 +71,16 @@ export default function BookCard({ book, onPress, onDelete }: BookCardProps) {
 
       {/* Delete */}
       {onDelete && (
-        <Pressable onPress={onDelete} style={{ padding: 8 }}>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onDelete();
+          }}
+          style={{ padding: 8 }}
+        >
           <Text style={{ color: "#c00", fontSize: 16 }}>✕</Text>
         </Pressable>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

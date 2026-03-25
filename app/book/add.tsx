@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   Pressable,
   ScrollView,
@@ -10,7 +9,9 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
 import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
 import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
@@ -85,6 +86,7 @@ export default function AddBookScreen() {
   const handleAdd = () => {
     if (!selected) return;
     addBook({ ...selected, status });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
 
@@ -324,9 +326,14 @@ export default function AddBookScreen() {
               {SHELVES.map((shelf) => {
                 const isActive = shelf.status === status;
                 return (
-                  <Pressable
+                  <AnimatedPressable
                     key={shelf.status}
-                    onPress={() => setStatus(shelf.status)}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setStatus(shelf.status);
+                    }}
+                    haptic="none"
+                    scaleDown={0.95}
                     style={{
                       paddingHorizontal: 14,
                       paddingVertical: 8,
@@ -345,14 +352,15 @@ export default function AddBookScreen() {
                     >
                       {shelf.label}
                     </Text>
-                  </Pressable>
+                  </AnimatedPressable>
                 );
               })}
             </View>
 
             {/* Add button */}
-            <Pressable
+            <AnimatedPressable
               onPress={handleAdd}
+              haptic="none"
               style={{
                 backgroundColor: "#34C759",
                 paddingVertical: 14,
@@ -364,7 +372,7 @@ export default function AddBookScreen() {
               <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>
                 Agregar a biblioteca
               </Text>
-            </Pressable>
+            </AnimatedPressable>
           </View>
         )}
       </View>

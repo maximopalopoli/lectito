@@ -1,4 +1,5 @@
 import type { BookSearchResult } from '@/types';
+import fetchWithTimeout from './fetchWithTimeout';
 
 // --- Types for Open Library API responses ---
 
@@ -31,7 +32,7 @@ function isLatin(text: string): boolean {
 }
 
 async function fetchAuthorName(authorKey: string): Promise<string> {
-  const res = await fetch(`${BASE_URL}${authorKey}.json`);
+  const res = await fetchWithTimeout(`${BASE_URL}${authorKey}.json`);
   if (!res.ok) return 'Autor desconocido';
   const data: OpenLibraryAuthor = await res.json();
   const name = data.name ?? 'Autor desconocido';
@@ -101,7 +102,7 @@ export async function searchBooksByText(query: string): Promise<BookSearchResult
   }
 
   const url = `${BASE_URL}/search.json?q=${encodeURIComponent(trimmed)}&limit=10&fields=title,author_name,isbn,cover_i,number_of_pages_median`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
 
   if (!res.ok) {
     throw new Error(`Error al buscar "${trimmed}" (HTTP ${res.status})`);
@@ -120,7 +121,7 @@ export async function fetchBookByISBN(isbn: string): Promise<BookSearchResult> {
     throw new Error('ISBN vacío');
   }
 
-  const res = await fetch(`${BASE_URL}/isbn/${normalized}.json`);
+  const res = await fetchWithTimeout(`${BASE_URL}/isbn/${normalized}.json`);
 
   if (res.status === 404) {
     throw new Error(`No se encontró un libro con ISBN ${normalized}`);

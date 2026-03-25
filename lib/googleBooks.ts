@@ -1,4 +1,5 @@
 import type { BookSearchResult } from '@/types';
+import fetchWithTimeout from './fetchWithTimeout';
 
 // --- Types for Google Books API responses ---
 
@@ -54,7 +55,7 @@ export async function searchBooksByText(query: string): Promise<BookSearchResult
   }
 
   const url = `${BASE_URL}?q=${encodeURIComponent(trimmed)}&maxResults=10`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
 
   if (!res.ok) {
     throw new Error(`Error al buscar "${trimmed}" (HTTP ${res.status})`);

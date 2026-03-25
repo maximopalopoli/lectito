@@ -11,7 +11,9 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useKeepAwake } from "expo-keep-awake";
+import * as Haptics from "expo-haptics";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
 
@@ -33,7 +35,7 @@ export default function SessionScreen() {
   const router = useRouter();
   const books = useBooksStore((s) => s.books);
   const updateBook = useBooksStore((s) => s.updateBook);
-  const addSession = useSessionsStore.getState().addSession;
+  const addSession = useSessionsStore((s) => s.addSession);
 
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
 
@@ -47,13 +49,18 @@ export default function SessionScreen() {
   const [pageInput, setPageInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
 
+  // Start timer on mount; cleanup clears whatever interval is active
+  // (including intervals recreated during pause/resume)
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, []);
 
@@ -62,11 +69,13 @@ export default function SessionScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
       setStatus("PAUSED");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else if (status === "PAUSED") {
       intervalRef.current = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
       }, 1000);
       setStatus("RUNNING");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
@@ -74,6 +83,7 @@ export default function SessionScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
     setStatus("STOPPED");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   };
 
   const handleSave = () => {
@@ -96,11 +106,12 @@ export default function SessionScreen() {
 
     updateBook(book.id, { currentPage: page });
 
-    router.canGoBack() ? router.back() : router.replace("/");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (router.canGoBack()) router.back(); else router.replace("/");
   };
 
   const handleDiscard = () => {
-    router.canGoBack() ? router.back() : router.replace("/");
+    if (router.canGoBack()) router.back(); else router.replace("/");
   };
 
   if (!book) {
@@ -212,8 +223,9 @@ export default function SessionScreen() {
               paddingBottom: 60,
             }}
           >
-            <Pressable
+            <AnimatedPressable
               onPress={handlePauseResume}
+              haptic="none"
               style={{
                 flex: 1,
                 backgroundColor: status === "PAUSED" ? "#34C759" : "#007AFF",
@@ -225,9 +237,10 @@ export default function SessionScreen() {
               <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>
                 {status === "PAUSED" ? "Reanudar" : "Pausar"}
               </Text>
-            </Pressable>
-            <Pressable
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={handleStop}
+              haptic="none"
               style={{
                 flex: 1,
                 backgroundColor: "#FF3B30",
@@ -239,7 +252,7 @@ export default function SessionScreen() {
               <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>
                 Detener
               </Text>
-            </Pressable>
+            </AnimatedPressable>
           </View>
         </>
       ) : (
@@ -295,8 +308,9 @@ export default function SessionScreen() {
             }}
           />
 
-          <Pressable
+          <AnimatedPressable
             onPress={handleSave}
+            haptic="none"
             style={{
               backgroundColor: isPageValid() ? "#34C759" : "#ccc",
               paddingVertical: 14,
@@ -309,16 +323,17 @@ export default function SessionScreen() {
             <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>
               Guardar sesión
             </Text>
-          </Pressable>
+          </AnimatedPressable>
 
-          <Pressable
+          <AnimatedPressable
             onPress={handleDiscard}
+            haptic="light"
             style={{ alignItems: "center", paddingVertical: 10 }}
           >
             <Text style={{ color: "#FF3B30", fontSize: 15 }}>
               Descartar
             </Text>
-          </Pressable>
+          </AnimatedPressable>
         </ScrollView>
       )}
     </KeyboardAvoidingView>

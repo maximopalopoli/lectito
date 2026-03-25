@@ -102,6 +102,23 @@ export interface DailyMinutes {
 
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
+export function getTodayStats(sessions: Session[]): {
+  minutes: number;
+  pages: number;
+  sessionsCount: number;
+} {
+  const todayKey = toDateKey(new Date());
+  const todaySessions = sessions.filter(
+    (s) => toDateKey(new Date(s.startedAt)) === todayKey,
+  );
+
+  return {
+    minutes: todaySessions.reduce((sum, s) => sum + s.durationMin, 0),
+    pages: todaySessions.reduce((sum, s) => sum + s.pagesRead, 0),
+    sessionsCount: todaySessions.length,
+  };
+}
+
 export function getMinutesPerDayLastWeek(sessions: Session[]): DailyMinutes[] {
   const result: DailyMinutes[] = [];
   const today = new Date();
