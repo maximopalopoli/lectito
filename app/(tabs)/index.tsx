@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -250,7 +250,7 @@ export default function HomeScreen() {
               marginBottom: 16,
             }}
           >
-            Marcá un libro como "Leyendo" para empezar a registrar sesiones.
+            {"Marcá un libro como \"Leyendo\" para empezar a registrar sesiones."}
           </Text>
           <AnimatedPressable
             onPress={() => router.push("/book/add")}

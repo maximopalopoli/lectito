@@ -107,11 +107,11 @@ export default function SessionScreen() {
     updateBook(book.id, { currentPage: page });
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.canGoBack() ? router.back() : router.replace("/");
+    if (router.canGoBack()) router.back(); else router.replace("/");
   };
 
   const handleDiscard = () => {
-    router.canGoBack() ? router.back() : router.replace("/");
+    if (router.canGoBack()) router.back(); else router.replace("/");
   };
 
   if (!book) {
