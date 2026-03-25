@@ -14,6 +14,7 @@ interface OpenLibraryEdition {
 
 interface OpenLibraryAuthor {
   name: string;
+  alternate_names?: string[];
 }
 
 // --- API functions ---
@@ -25,11 +26,23 @@ function normalizeISBN(isbn: string): string {
   return isbn.replace(/[-\s]/g, '');
 }
 
+function isLatin(text: string): boolean {
+  return /^[\u0000-\u024F\u1E00-\u1EFF\s\-'.,()\d]+$/.test(text);
+}
+
 async function fetchAuthorName(authorKey: string): Promise<string> {
   const res = await fetch(`${BASE_URL}${authorKey}.json`);
   if (!res.ok) return 'Autor desconocido';
   const data: OpenLibraryAuthor = await res.json();
-  return data.name ?? 'Autor desconocido';
+  const name = data.name ?? 'Autor desconocido';
+
+  // If name is in non-Latin script, try to find a Latin alternate name
+  if (!isLatin(name) && data.alternate_names?.length) {
+    const latinName = data.alternate_names.find(isLatin);
+    if (latinName) return latinName;
+  }
+
+  return name;
 }
 
 async function resolveAuthors(edition: OpenLibraryEdition): Promise<string[]> {
@@ -72,10 +85,12 @@ export async function fetchBookByISBN(isbn: string): Promise<BookSearchResult> {
 
   const authors = await resolveAuthors(edition);
 
+  const hasCover = edition.covers && edition.covers.length > 0 && edition.covers[0] !== -1;
+
   return {
     title: edition.title,
     authors,
-    coverUrl: `${COVERS_URL}/${normalized}-L.jpg`,
+    coverUrl: hasCover ? `${COVERS_URL}/${normalized}-L.jpg` : null,
     isbn13: edition.isbn_13?.[0] ?? null,
     isbn10: edition.isbn_10?.[0] ?? null,
     pageCount: edition.number_of_pages ?? 0,
