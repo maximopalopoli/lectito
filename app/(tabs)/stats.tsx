@@ -207,6 +207,23 @@ export default function StatsScreen() {
           ))}
         </View>
       </View>
+
+      {/* Backup */}
+      <AnimatedPressable
+        onPress={() => router.push("/settings/backup")}
+        haptic="light"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          marginTop: 32,
+          paddingVertical: 12,
+        }}
+      >
+        <Ionicons name="cloud-download-outline" size={18} color="#999" />
+        <Text style={{ fontSize: 14, color: "#999" }}>Backup</Text>
+      </AnimatedPressable>
     </ScrollView>
   );
 }

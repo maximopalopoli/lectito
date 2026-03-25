@@ -17,6 +17,7 @@ export interface BooksState {
   updateBook: (id: string, updates: Partial<Book>) => void;
   deleteBook: (id: string) => void;
   changeStatus: (id: string, status: BookStatus) => void;
+  replaceBooks: (books: Book[]) => void;
 }
 
 export const useBooksStore = create<BooksState>()((set) => {
@@ -84,5 +85,10 @@ export const useBooksStore = create<BooksState>()((set) => {
         saveBooks(books);
         return { books };
       }),
+
+    replaceBooks: (books) => {
+      saveBooks(books);
+      set({ books });
+    },
   };
 });

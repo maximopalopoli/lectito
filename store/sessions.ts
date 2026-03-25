@@ -15,6 +15,7 @@ export interface SessionsState {
   _hydrated: boolean;
   addSession: (session: Omit<Session, 'id'>) => void;
   deleteSession: (id: string) => void;
+  replaceSessions: (sessions: Session[]) => void;
 }
 
 export const useSessionsStore = create<SessionsState>()((set) => {
@@ -54,5 +55,10 @@ export const useSessionsStore = create<SessionsState>()((set) => {
         saveSessions(sessions);
         return { sessions };
       }),
+
+    replaceSessions: (sessions) => {
+      saveSessions(sessions);
+      set({ sessions });
+    },
   };
 });
