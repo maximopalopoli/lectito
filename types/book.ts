@@ -12,3 +12,5 @@ export interface Book {
   addedAt: string; // ISO date
   currentPage: number;
 }
+
+export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'currentPage' | 'status'>;

@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 
 import BookCard from "@/components/BookCard";
 import { useBooksStore } from "@/store/books";
-import type { Book, BookStatus } from "@/types";
+import type { BookStatus } from "@/types";
 
 const TABS: { label: string; status: BookStatus }[] = [
   { label: "Quiero leer", status: "TBR" },
@@ -13,20 +13,10 @@ const TABS: { label: string; status: BookStatus }[] = [
   { label: "Abandonados", status: "DNF" },
 ];
 
-const TEST_BOOKS: Omit<Book, "id" | "addedAt" | "currentPage">[] = [
-  { title: "Cien años de soledad", authors: ["Gabriel García Márquez"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 417, status: "TBR" },
-  { title: "Rayuela", authors: ["Julio Cortázar"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 600, status: "READING" },
-  { title: "Ficciones", authors: ["Jorge Luis Borges"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 174, status: "DONE" },
-  { title: "2666", authors: ["Roberto Bolaño"], coverUrl: null, isbn13: null, isbn10: null, pageCount: 1120, status: "DNF" },
-];
-
-let testIndex = 0;
-
 export default function LibraryScreen() {
   const [activeTab, setActiveTab] = useState<BookStatus>("TBR");
   const router = useRouter();
   const books = useBooksStore((s) => s.books);
-  const addBook = useBooksStore((s) => s.addBook);
   const deleteBook = useBooksStore((s) => s.deleteBook);
 
   const filteredBooks = useMemo(
@@ -48,10 +38,7 @@ export default function LibraryScreen() {
       >
         <Text style={{ fontSize: 28, fontWeight: "bold" }}>Biblioteca</Text>
         <Pressable
-          onPress={() => {
-            addBook(TEST_BOOKS[testIndex % TEST_BOOKS.length]);
-            testIndex++;
-          }}
+          onPress={() => router.push("/book/add")}
           style={{
             backgroundColor: "#007AFF",
             width: 36,
