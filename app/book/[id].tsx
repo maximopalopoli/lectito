@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Image,
   Pressable,
@@ -23,11 +23,13 @@ const STATUS_LABEL: Record<BookStatus, string> = {
 export default function BookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const book = useBooksStore((s) => s.books.find((b) => b.id === id));
+  const books = useBooksStore((s) => s.books);
   const updateBook = useBooksStore((s) => s.updateBook);
   const changeStatus = useBooksStore((s) => s.changeStatus);
+  const allSessions = useSessionsStore((s) => s.sessions);
 
-  const sessions = useSessionsStore((s) => s.getSessionsByBook(id ?? ""));
+  const book = useMemo(() => books.find((b) => b.id === id), [books, id]);
+  const sessions = useMemo(() => allSessions.filter((s) => s.bookId === id), [allSessions, id]);
 
   const [pageInput, setPageInput] = useState("");
   const [showPageInput, setShowPageInput] = useState(false);

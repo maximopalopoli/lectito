@@ -29,10 +29,9 @@ export interface SessionsState {
   sessions: Session[];
   addSession: (session: Omit<Session, 'id'>) => void;
   deleteSession: (id: string) => void;
-  getSessionsByBook: (bookId: string) => Session[];
 }
 
-export const useSessionsStore = create<SessionsState>()((set, get) => ({
+export const useSessionsStore = create<SessionsState>()((set) => ({
   sessions: loadSessions(),
 
   addSession: (session) =>
@@ -54,8 +53,4 @@ export const useSessionsStore = create<SessionsState>()((set, get) => ({
       saveSessions(sessions);
       return { sessions };
     }),
-
-  getSessionsByBook: (bookId) => {
-    return get().sessions.filter((s) => s.bookId === bookId);
-  },
 }));

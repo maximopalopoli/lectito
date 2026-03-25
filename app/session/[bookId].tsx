@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -31,9 +31,11 @@ function formatTime(totalSeconds: number): string {
 export default function SessionScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
-  const book = useBooksStore((s) => s.books.find((b) => b.id === bookId));
+  const books = useBooksStore((s) => s.books);
   const updateBook = useBooksStore((s) => s.updateBook);
-  const addSession = useSessionsStore((s) => s.addSession);
+  const addSession = useSessionsStore.getState().addSession;
+
+  const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [status, setStatus] = useState<TimerStatus>("RUNNING");
