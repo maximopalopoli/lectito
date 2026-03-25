@@ -6,19 +6,25 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
 import {
   getBestStreak,
+  getGoalProgress,
   getMinutesPerDayLastWeek,
   getPagesPerDay,
   getStreak,
   getWeeklyStats,
 } from "@/lib/stats";
+import { useGoalsStore } from "@/store/goals";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function StatsScreen() {
+  const router = useRouter();
   const sessions = useSessionsStore((s) => s.sessions);
+  const goal = useGoalsStore((s) => s.goal);
   const weekly = useMemo(() => getWeeklyStats(sessions), [sessions]);
   const pagesPerDay7 = useMemo(() => getPagesPerDay(sessions, 7), [sessions]);
   const pagesPerDay30 = useMemo(() => getPagesPerDay(sessions, 30), [sessions]);
@@ -78,6 +84,9 @@ export default function StatsScreen() {
         <StatCard label="Minutos" value={weekly.totalMinutes} />
         <StatCard label="Sesiones" value={weekly.totalSessions} />
       </View>
+
+      {/* Goal progress */}
+      <GoalSection sessions={sessions} goal={goal} router={router} />
 
       {/* Pages per day */}
       <SectionTitle>Páginas/día promedio</SectionTitle>
@@ -240,5 +249,115 @@ function StatCard({ label, value }: { label: string; value: number }) {
         {label}
       </Text>
     </View>
+  );
+}
+
+function GoalSection({
+  sessions,
+  goal,
+  router,
+}: {
+  sessions: import("@/types").Session[];
+  goal: import("@/types").Goal | null;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const metricLabel = goal?.metric === "pages" ? "pág" : "min";
+  const periodLabel = goal?.period === "weekly" ? "esta semana" : "hoy";
+
+  const progress = useMemo(
+    () => (goal ? getGoalProgress(sessions, goal) : null),
+    [sessions, goal],
+  );
+
+  return (
+    <>
+      <SectionTitle>Objetivo</SectionTitle>
+      {goal && progress ? (
+        <View
+          style={{
+            backgroundColor: "#f5f5f5",
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "600" }}>
+              {progress.current}/{progress.target} {metricLabel} {periodLabel}
+            </Text>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "bold",
+                color: progress.percentage >= 100 ? "#34C759" : "#007AFF",
+              }}
+            >
+              {progress.percentage}%
+            </Text>
+          </View>
+
+          {/* Progress bar */}
+          <View
+            style={{
+              height: 8,
+              backgroundColor: "#ddd",
+              borderRadius: 4,
+              marginBottom: 12,
+            }}
+          >
+            <View
+              style={{
+                height: 8,
+                backgroundColor:
+                  progress.percentage >= 100 ? "#34C759" : "#007AFF",
+                borderRadius: 4,
+                width: `${progress.percentage}%`,
+              }}
+            />
+          </View>
+
+          <AnimatedPressable
+            onPress={() => router.push("/goals/configure")}
+            haptic="light"
+            scaleDown={0.97}
+            style={{ alignItems: "center", paddingTop: 4 }}
+          >
+            <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "500" }}>
+              Cambiar objetivo
+            </Text>
+          </AnimatedPressable>
+        </View>
+      ) : (
+        <AnimatedPressable
+          onPress={() => router.push("/goals/configure")}
+          haptic="light"
+          style={{
+            backgroundColor: "#f5f5f5",
+            borderRadius: 12,
+            padding: 20,
+            alignItems: "center",
+          }}
+        >
+          <Ionicons
+            name="flag-outline"
+            size={28}
+            color="#999"
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={{ fontSize: 15, color: "#666", fontWeight: "500" }}>
+            Configurar objetivo
+          </Text>
+          <Text style={{ fontSize: 13, color: "#999", marginTop: 4 }}>
+            Definí una meta diaria o semanal
+          </Text>
+        </AnimatedPressable>
+      )}
+    </>
   );
 }

@@ -4,17 +4,23 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
-import { getStreak, getTodayStats } from "@/lib/stats";
+import { getGoalProgress, getStreak, getTodayStats } from "@/lib/stats";
 import { useBooksStore } from "@/store/books";
+import { useGoalsStore } from "@/store/goals";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function HomeScreen() {
   const router = useRouter();
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
+  const goal = useGoalsStore((s) => s.goal);
 
   const todayStats = useMemo(() => getTodayStats(sessions), [sessions]);
   const streak = useMemo(() => getStreak(sessions), [sessions]);
+  const goalProgress = useMemo(
+    () => (goal ? getGoalProgress(sessions, goal) : null),
+    [sessions, goal],
+  );
 
   const readingBooks = books.filter((b) => b.status === "READING");
 
@@ -93,6 +99,54 @@ export default function HomeScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Goal progress */}
+      {goal && goalProgress && (
+        <View
+          style={{
+            backgroundColor: "#f5f5f5",
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 24,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>
+              {goalProgress.current}/{goalProgress.target}{" "}
+              {goal.metric === "minutes" ? "min" : "pág"}{" "}
+              {goal.period === "daily" ? "hoy" : "esta semana"}
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "bold",
+                color: goalProgress.percentage >= 100 ? "#34C759" : "#007AFF",
+              }}
+            >
+              {goalProgress.percentage}%
+            </Text>
+          </View>
+          <View
+            style={{ height: 6, backgroundColor: "#ddd", borderRadius: 3 }}
+          >
+            <View
+              style={{
+                height: 6,
+                backgroundColor:
+                  goalProgress.percentage >= 100 ? "#34C759" : "#007AFF",
+                borderRadius: 3,
+                width: `${goalProgress.percentage}%`,
+              }}
+            />
+          </View>
+        </View>
+      )}
 
       {/* Continue reading */}
       {readingBooks.length > 0 ? (

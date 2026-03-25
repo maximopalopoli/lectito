@@ -1,4 +1,4 @@
-import type { Session } from '@/types';
+import type { Goal, Session } from '@/types';
 
 function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -135,4 +135,25 @@ export function getMinutesPerDayLastWeek(sessions: Session[]): DailyMinutes[] {
   }
 
   return result;
+}
+
+export function getGoalProgress(
+  sessions: Session[],
+  goal: Goal,
+): { current: number; target: number; percentage: number } {
+  const filtered =
+    goal.period === 'daily'
+      ? sessions.filter((s) => toDateKey(new Date(s.startedAt)) === toDateKey(new Date()))
+      : sessions.filter((s) => new Date(s.startedAt) >= getStartOfWeek());
+
+  const current =
+    goal.metric === 'minutes'
+      ? filtered.reduce((sum, s) => sum + s.durationMin, 0)
+      : filtered.reduce((sum, s) => sum + s.pagesRead, 0);
+
+  return {
+    current,
+    target: goal.target,
+    percentage: Math.min(Math.round((current / goal.target) * 100), 100),
+  };
 }
