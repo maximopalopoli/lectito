@@ -35,7 +35,7 @@ export default function SessionScreen() {
   const router = useRouter();
   const books = useBooksStore((s) => s.books);
   const updateBook = useBooksStore((s) => s.updateBook);
-  const addSession = useSessionsStore.getState().addSession;
+  const addSession = useSessionsStore((s) => s.addSession);
 
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
 
@@ -49,13 +49,18 @@ export default function SessionScreen() {
   const [pageInput, setPageInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
 
+  // Start timer on mount; cleanup clears whatever interval is active
+  // (including intervals recreated during pause/resume)
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, []);
 
