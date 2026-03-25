@@ -1,10 +1,12 @@
 import type { Session } from '@/types';
 
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getStartOfWeek(): Date {
   const now = new Date();
   const day = now.getDay();
-  // getDay(): 0=Sunday, 1=Monday, ..., 6=Saturday
-  // We want Monday as start of week
   const diff = day === 0 ? 6 : day - 1;
   const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
   return monday;
@@ -48,22 +50,16 @@ export function getPagesPerDay(
 export function getStreak(sessions: Session[]): number {
   if (sessions.length === 0) return 0;
 
-  // Collect unique dates (YYYY-MM-DD local) that have at least one session
   const sessionDates = new Set(
-    sessions.map((s) => {
-      const d = new Date(s.startedAt);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }),
+    sessions.map((s) => toDateKey(new Date(s.startedAt))),
   );
 
-  // Walk backwards from today counting consecutive days
   const now = new Date();
   let streak = 0;
   const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   while (true) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
-    if (sessionDates.has(key)) {
+    if (sessionDates.has(toDateKey(cursor))) {
       streak++;
       cursor.setDate(cursor.getDate() - 1);
     } else {
@@ -78,22 +74,17 @@ export function getBestStreak(sessions: Session[]): number {
   if (sessions.length === 0) return 0;
 
   const sessionDates = [
-    ...new Set(
-      sessions.map((s) => {
-        const d = new Date(s.startedAt);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      }),
-    ),
+    ...new Set(sessions.map((s) => toDateKey(new Date(s.startedAt)))),
   ].sort();
 
   let best = 1;
   let current = 1;
 
   for (let i = 1; i < sessionDates.length; i++) {
+    // Walk from previous date forward one day and compare keys
     const prev = new Date(sessionDates[i - 1]);
-    const curr = new Date(sessionDates[i]);
-    const diffMs = curr.getTime() - prev.getTime();
-    if (diffMs === 86_400_000) {
+    prev.setDate(prev.getDate() + 1);
+    if (toDateKey(prev) === sessionDates[i]) {
       current++;
       if (current > best) best = current;
     } else {
@@ -117,16 +108,10 @@ export function getMinutesPerDayLastWeek(sessions: Session[]): DailyMinutes[] {
 
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
-    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dateKey = toDateKey(d);
 
     const minutes = sessions
-      .filter((s) => {
-        const sd = new Date(s.startedAt);
-        return (
-          `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}-${String(sd.getDate()).padStart(2, '0')}` ===
-          dateKey
-        );
-      })
+      .filter((s) => toDateKey(new Date(s.startedAt)) === dateKey)
       .reduce((sum, s) => sum + s.durationMin, 0);
 
     result.push({ label: DAY_LABELS[d.getDay()], minutes });

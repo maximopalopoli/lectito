@@ -67,7 +67,7 @@ export default function StatsScreen() {
             {streak}
           </Text>
           <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
-            {streak === 1 ? "día actual" : "días actual"}
+            racha actual
           </Text>
         </View>
         <View
