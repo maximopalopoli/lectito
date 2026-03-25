@@ -73,3 +73,64 @@ export function getStreak(sessions: Session[]): number {
 
   return streak;
 }
+
+export function getBestStreak(sessions: Session[]): number {
+  if (sessions.length === 0) return 0;
+
+  const sessionDates = [
+    ...new Set(
+      sessions.map((s) => {
+        const d = new Date(s.startedAt);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }),
+    ),
+  ].sort();
+
+  let best = 1;
+  let current = 1;
+
+  for (let i = 1; i < sessionDates.length; i++) {
+    const prev = new Date(sessionDates[i - 1]);
+    const curr = new Date(sessionDates[i]);
+    const diffMs = curr.getTime() - prev.getTime();
+    if (diffMs === 86_400_000) {
+      current++;
+      if (current > best) best = current;
+    } else {
+      current = 1;
+    }
+  }
+
+  return best;
+}
+
+export interface DailyMinutes {
+  label: string; // e.g. "Lun", "Mar"
+  minutes: number;
+}
+
+const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+export function getMinutesPerDayLastWeek(sessions: Session[]): DailyMinutes[] {
+  const result: DailyMinutes[] = [];
+  const today = new Date();
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const minutes = sessions
+      .filter((s) => {
+        const sd = new Date(s.startedAt);
+        return (
+          `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}-${String(sd.getDate()).padStart(2, '0')}` ===
+          dateKey
+        );
+      })
+      .reduce((sum, s) => sum + s.durationMin, 0);
+
+    result.push({ label: DAY_LABELS[d.getDay()], minutes });
+  }
+
+  return result;
+}
