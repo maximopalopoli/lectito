@@ -59,7 +59,10 @@ export default function BookCard({ book, onPress, onDelete }: BookCardProps) {
           {book.authors.join(", ")}
         </Text>
         <Text style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
-          {STATUS_LABEL[book.status]} · {book.pageCount} pp
+          {STATUS_LABEL[book.status]}
+          {book.status === "READING" && book.pageCount > 0
+            ? ` · ${book.currentPage}/${book.pageCount} (${Math.round((book.currentPage / book.pageCount) * 100)}%)`
+            : ` · ${book.pageCount} pp`}
         </Text>
       </View>
 
