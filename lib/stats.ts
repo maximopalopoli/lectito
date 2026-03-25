@@ -25,3 +25,22 @@ export function getWeeklyStats(sessions: Session[]): {
     totalSessions: weeklySessions.length,
   };
 }
+
+function daysAgo(days: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days + 1);
+  return d;
+}
+
+export function getPagesPerDay(
+  sessions: Session[],
+  days: number,
+): number {
+  const since = daysAgo(days);
+  const totalPages = sessions
+    .filter((s) => new Date(s.startedAt) >= since)
+    .reduce((sum, s) => sum + s.pagesRead, 0);
+
+  return Math.round((totalPages / days) * 10) / 10;
+}

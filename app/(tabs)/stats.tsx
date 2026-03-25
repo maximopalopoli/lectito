@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { getWeeklyStats } from "@/lib/stats";
+import { getPagesPerDay, getWeeklyStats } from "@/lib/stats";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function StatsScreen() {
   const sessions = useSessionsStore((s) => s.sessions);
   const weekly = useMemo(() => getWeeklyStats(sessions), [sessions]);
+  const pagesPerDay7 = useMemo(() => getPagesPerDay(sessions, 7), [sessions]);
+  const pagesPerDay30 = useMemo(() => getPagesPerDay(sessions, 30), [sessions]);
 
   return (
     <ScrollView
@@ -24,6 +26,15 @@ export default function StatsScreen() {
       <View style={{ flexDirection: "row", gap: 12 }}>
         <StatCard label="Minutos" value={weekly.totalMinutes} />
         <StatCard label="Sesiones" value={weekly.totalSessions} />
+      </View>
+
+      <Text style={{ fontSize: 15, fontWeight: "600", color: "#666", marginTop: 24, marginBottom: 12 }}>
+        Páginas/día promedio
+      </Text>
+
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <StatCard label="Últimos 7 días" value={pagesPerDay7} />
+        <StatCard label="Últimos 30 días" value={pagesPerDay30} />
       </View>
     </ScrollView>
   );
