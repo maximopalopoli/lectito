@@ -1,4 +1,4 @@
-import type { Session } from '@/types';
+import type { Book, Goal, Session } from '@/types';
 
 function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -132,6 +132,109 @@ export function getMinutesPerDayLastWeek(sessions: Session[]): DailyMinutes[] {
       .reduce((sum, s) => sum + s.durationMin, 0);
 
     result.push({ label: DAY_LABELS[d.getDay()], minutes });
+  }
+
+  return result;
+}
+
+export function getGoalProgress(
+  sessions: Session[],
+  goal: Goal,
+): { current: number; target: number; percentage: number } {
+  const filtered =
+    goal.period === 'daily'
+      ? sessions.filter((s) => toDateKey(new Date(s.startedAt)) === toDateKey(new Date()))
+      : sessions.filter((s) => new Date(s.startedAt) >= getStartOfWeek());
+
+  const current =
+    goal.metric === 'minutes'
+      ? filtered.reduce((sum, s) => sum + s.durationMin, 0)
+      : filtered.reduce((sum, s) => sum + s.pagesRead, 0);
+
+  return {
+    current,
+    target: goal.target,
+    percentage: Math.min(Math.round((current / goal.target) * 100), 100),
+  };
+}
+
+// --- Heatmap ---
+
+const HEATMAP_THRESHOLDS = [0, 15, 45] as const; // minutes
+
+export interface HeatmapDay {
+  date: string; // YYYY-MM-DD
+  minutes: number;
+  level: 0 | 1 | 2 | 3;
+}
+
+function minutesToLevel(minutes: number): 0 | 1 | 2 | 3 {
+  if (minutes <= HEATMAP_THRESHOLDS[0]) return 0;
+  if (minutes <= HEATMAP_THRESHOLDS[1]) return 1;
+  if (minutes <= HEATMAP_THRESHOLDS[2]) return 2;
+  return 3;
+}
+
+export function getReadingHeatmap(
+  sessions: Session[],
+  months = 3,
+): HeatmapDay[] {
+  // Build minutes-per-day map
+  const minutesMap: Record<string, number> = {};
+  for (const s of sessions) {
+    const key = toDateKey(new Date(s.startedAt));
+    minutesMap[key] = (minutesMap[key] ?? 0) + s.durationMin;
+  }
+
+  // Generate all days in range
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() - months, today.getDate());
+  // Align to Monday
+  const dayOfWeek = start.getDay();
+  const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  start.setDate(start.getDate() - diff);
+
+  const result: HeatmapDay[] = [];
+  const cursor = new Date(start);
+
+  while (cursor <= today) {
+    const key = toDateKey(cursor);
+    const minutes = minutesMap[key] ?? 0;
+    result.push({ date: key, minutes, level: minutesToLevel(minutes) });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return result;
+}
+
+// --- Books per month ---
+
+const MONTH_LABELS = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+];
+
+export interface MonthlyBooks {
+  label: string;
+  count: number;
+}
+
+export function getBooksPerMonth(books: Book[], months = 6): MonthlyBooks[] {
+  const now = new Date();
+  const result: MonthlyBooks[] = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+
+    const count = books.filter((b) => {
+      if (b.status !== 'DONE' || !b.completedAt) return false;
+      const completed = new Date(b.completedAt);
+      return completed.getFullYear() === year && completed.getMonth() === month;
+    }).length;
+
+    result.push({ label: MONTH_LABELS[month], count });
   }
 
   return result;

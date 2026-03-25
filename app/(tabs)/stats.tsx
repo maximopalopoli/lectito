@@ -6,19 +6,30 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
+import Heatmap from "@/components/Heatmap";
 import {
   getBestStreak,
+  getBooksPerMonth,
+  getGoalProgress,
   getMinutesPerDayLastWeek,
   getPagesPerDay,
+  getReadingHeatmap,
   getStreak,
   getWeeklyStats,
 } from "@/lib/stats";
+import { useBooksStore } from "@/store/books";
+import { useGoalsStore } from "@/store/goals";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function StatsScreen() {
+  const router = useRouter();
   const sessions = useSessionsStore((s) => s.sessions);
+  const books = useBooksStore((s) => s.books);
+  const goal = useGoalsStore((s) => s.goal);
   const weekly = useMemo(() => getWeeklyStats(sessions), [sessions]);
   const pagesPerDay7 = useMemo(() => getPagesPerDay(sessions, 7), [sessions]);
   const pagesPerDay30 = useMemo(() => getPagesPerDay(sessions, 30), [sessions]);
@@ -28,8 +39,17 @@ export default function StatsScreen() {
     () => getMinutesPerDayLastWeek(sessions),
     [sessions],
   );
+  const heatmapData = useMemo(
+    () => getReadingHeatmap(sessions),
+    [sessions],
+  );
+  const monthlyBooks = useMemo(
+    () => getBooksPerMonth(books),
+    [books],
+  );
 
   const maxMinutes = Math.max(...dailyMinutes.map((d) => d.minutes), 1);
+  const maxMonthlyBooks = Math.max(...monthlyBooks.map((m) => m.count), 1);
   const hasData = sessions.length > 0;
 
   if (!hasData) {
@@ -79,6 +99,9 @@ export default function StatsScreen() {
         <StatCard label="Sesiones" value={weekly.totalSessions} />
       </View>
 
+      {/* Goal progress */}
+      <GoalSection sessions={sessions} goal={goal} router={router} />
+
       {/* Pages per day */}
       <SectionTitle>Páginas/día promedio</SectionTitle>
       <View style={{ flexDirection: "row", gap: 12 }}>
@@ -123,6 +146,10 @@ export default function StatsScreen() {
         </View>
       </View>
 
+      {/* Heatmap */}
+      <SectionTitle>Actividad de lectura</SectionTitle>
+      <Heatmap data={heatmapData} />
+
       {/* Minutes chart */}
       <SectionTitle>Minutos por día (últimos 7 días)</SectionTitle>
       <View
@@ -151,7 +178,104 @@ export default function StatsScreen() {
           ))}
         </View>
       </View>
+
+      {/* Books per month */}
+      <SectionTitle>Libros terminados</SectionTitle>
+      <View
+        style={{
+          backgroundColor: "#f5f5f5",
+          borderRadius: 12,
+          padding: 16,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            height: 120,
+          }}
+        >
+          {monthlyBooks.map((month, index) => (
+            <MonthlyBookBar
+              key={month.label}
+              label={month.label}
+              count={month.count}
+              maxCount={maxMonthlyBooks}
+              index={index}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* Backup */}
+      <AnimatedPressable
+        onPress={() => router.push("/settings/backup")}
+        haptic="light"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          marginTop: 32,
+          paddingVertical: 12,
+        }}
+      >
+        <Ionicons name="cloud-download-outline" size={18} color="#999" />
+        <Text style={{ fontSize: 14, color: "#999" }}>Backup</Text>
+      </AnimatedPressable>
     </ScrollView>
+  );
+}
+
+function MonthlyBookBar({
+  label,
+  count,
+  maxCount,
+  index,
+}: {
+  label: string;
+  count: number;
+  maxCount: number;
+  index: number;
+}) {
+  const targetHeight = Math.max(
+    (count / maxCount) * 90,
+    count > 0 ? 4 : 0,
+  );
+  const height = useSharedValue(0);
+
+  useEffect(() => {
+    height.value = withDelay(
+      index * 80,
+      withTiming(targetHeight, { duration: 500 }),
+    );
+  }, [targetHeight, index, height]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: height.value,
+  }));
+
+  return (
+    <View style={{ alignItems: "center", flex: 1 }}>
+      <Text style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
+        {count > 0 ? count : ""}
+      </Text>
+      <Animated.View
+        style={[
+          {
+            width: 24,
+            backgroundColor: count > 0 ? "#34C759" : "#ddd",
+            borderRadius: 4,
+            minHeight: 4,
+          },
+          animatedStyle,
+        ]}
+      />
+      <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -240,5 +364,115 @@ function StatCard({ label, value }: { label: string; value: number }) {
         {label}
       </Text>
     </View>
+  );
+}
+
+function GoalSection({
+  sessions,
+  goal,
+  router,
+}: {
+  sessions: import("@/types").Session[];
+  goal: import("@/types").Goal | null;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const metricLabel = goal?.metric === "pages" ? "pág" : "min";
+  const periodLabel = goal?.period === "weekly" ? "esta semana" : "hoy";
+
+  const progress = useMemo(
+    () => (goal ? getGoalProgress(sessions, goal) : null),
+    [sessions, goal],
+  );
+
+  return (
+    <>
+      <SectionTitle>Objetivo</SectionTitle>
+      {goal && progress ? (
+        <View
+          style={{
+            backgroundColor: "#f5f5f5",
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "600" }}>
+              {progress.current}/{progress.target} {metricLabel} {periodLabel}
+            </Text>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "bold",
+                color: progress.percentage >= 100 ? "#34C759" : "#007AFF",
+              }}
+            >
+              {progress.percentage}%
+            </Text>
+          </View>
+
+          {/* Progress bar */}
+          <View
+            style={{
+              height: 8,
+              backgroundColor: "#ddd",
+              borderRadius: 4,
+              marginBottom: 12,
+            }}
+          >
+            <View
+              style={{
+                height: 8,
+                backgroundColor:
+                  progress.percentage >= 100 ? "#34C759" : "#007AFF",
+                borderRadius: 4,
+                width: `${progress.percentage}%`,
+              }}
+            />
+          </View>
+
+          <AnimatedPressable
+            onPress={() => router.push("/goals/configure")}
+            haptic="light"
+            scaleDown={0.97}
+            style={{ alignItems: "center", paddingTop: 4 }}
+          >
+            <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "500" }}>
+              Cambiar objetivo
+            </Text>
+          </AnimatedPressable>
+        </View>
+      ) : (
+        <AnimatedPressable
+          onPress={() => router.push("/goals/configure")}
+          haptic="light"
+          style={{
+            backgroundColor: "#f5f5f5",
+            borderRadius: 12,
+            padding: 20,
+            alignItems: "center",
+          }}
+        >
+          <Ionicons
+            name="flag-outline"
+            size={28}
+            color="#999"
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={{ fontSize: 15, color: "#666", fontWeight: "500" }}>
+            Configurar objetivo
+          </Text>
+          <Text style={{ fontSize: 13, color: "#999", marginTop: 4 }}>
+            Definí una meta diaria o semanal
+          </Text>
+        </AnimatedPressable>
+      )}
+    </>
   );
 }
