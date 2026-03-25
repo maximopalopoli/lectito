@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useKeepAwake } from "expo-keep-awake";
 
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
@@ -37,6 +38,8 @@ export default function SessionScreen() {
   const [status, setStatus] = useState<TimerStatus>("RUNNING");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef(new Date().toISOString());
+
+  useKeepAwake();
 
   const [pageInput, setPageInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
