@@ -12,8 +12,8 @@ import {
 import { useRouter } from "expo-router";
 
 import { useBooksStore } from "@/store/books";
-import { fetchBookByISBN } from "@/lib/openLibrary";
-import { searchBooksByText } from "@/lib/googleBooks";
+import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
+import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
 import type { BookSearchResult, BookStatus } from "@/types";
 
 const SHELVES: { label: string; status: BookStatus }[] = [
@@ -60,7 +60,11 @@ export default function AddBookScreen() {
           found = await searchBooksByText(trimmed);
         }
       } else {
+        // Open Library text search, Google Books as last resort
         found = await searchBooksByText(trimmed);
+        if (found.length === 0) {
+          found = await searchGoogleBooks(trimmed);
+        }
       }
 
       if (found.length === 0) {

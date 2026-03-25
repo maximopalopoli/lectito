@@ -62,6 +62,58 @@ async function resolveAuthors(edition: OpenLibraryEdition): Promise<string[]> {
   return ['Autor desconocido'];
 }
 
+// --- Types for Open Library Search API ---
+
+interface OpenLibrarySearchResponse {
+  docs: OpenLibrarySearchDoc[];
+}
+
+interface OpenLibrarySearchDoc {
+  title: string;
+  author_name?: string[];
+  isbn?: string[];
+  cover_i?: number;
+  number_of_pages_median?: number;
+}
+
+const COVERS_BY_ID_URL = 'https://covers.openlibrary.org/b/id';
+
+function searchDocToResult(doc: OpenLibrarySearchDoc): BookSearchResult | null {
+  if (!doc.title) return null;
+
+  const isbn13 = doc.isbn?.find((i) => i.length === 13) ?? null;
+  const isbn10 = doc.isbn?.find((i) => i.length === 10) ?? null;
+
+  return {
+    title: doc.title,
+    authors: doc.author_name ?? ['Autor desconocido'],
+    coverUrl: doc.cover_i ? `${COVERS_BY_ID_URL}/${doc.cover_i}-L.jpg` : null,
+    isbn13,
+    isbn10,
+    pageCount: doc.number_of_pages_median ?? 0,
+  };
+}
+
+export async function searchBooksByText(query: string): Promise<BookSearchResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    throw new Error('La búsqueda no puede estar vacía');
+  }
+
+  const url = `${BASE_URL}/search.json?q=${encodeURIComponent(trimmed)}&limit=10&fields=title,author_name,isbn,cover_i,number_of_pages_median`;
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(`Error al buscar "${trimmed}" (HTTP ${res.status})`);
+  }
+
+  const data: OpenLibrarySearchResponse = await res.json();
+
+  return data.docs
+    .map(searchDocToResult)
+    .filter((book): book is BookSearchResult => book !== null);
+}
+
 export async function fetchBookByISBN(isbn: string): Promise<BookSearchResult> {
   const normalized = normalizeISBN(isbn);
   if (!normalized) {
