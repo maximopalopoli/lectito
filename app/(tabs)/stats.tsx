@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { getPagesPerDay, getWeeklyStats } from "@/lib/stats";
+import { getPagesPerDay, getStreak, getWeeklyStats } from "@/lib/stats";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function StatsScreen() {
@@ -9,6 +9,7 @@ export default function StatsScreen() {
   const weekly = useMemo(() => getWeeklyStats(sessions), [sessions]);
   const pagesPerDay7 = useMemo(() => getPagesPerDay(sessions, 7), [sessions]);
   const pagesPerDay30 = useMemo(() => getPagesPerDay(sessions, 30), [sessions]);
+  const streak = useMemo(() => getStreak(sessions), [sessions]);
 
   return (
     <ScrollView
@@ -35,6 +36,26 @@ export default function StatsScreen() {
       <View style={{ flexDirection: "row", gap: 12 }}>
         <StatCard label="Últimos 7 días" value={pagesPerDay7} />
         <StatCard label="Últimos 30 días" value={pagesPerDay30} />
+      </View>
+
+      <Text style={{ fontSize: 15, fontWeight: "600", color: "#666", marginTop: 24, marginBottom: 12 }}>
+        Racha de lectura
+      </Text>
+
+      <View
+        style={{
+          backgroundColor: "#f5f5f5",
+          borderRadius: 12,
+          padding: 16,
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontSize: 32, fontWeight: "bold", color: "#FF9500" }}>
+          {streak}
+        </Text>
+        <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
+          {streak === 1 ? "día consecutivo" : "días consecutivos"}
+        </Text>
       </View>
     </ScrollView>
   );
