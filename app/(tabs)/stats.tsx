@@ -1,5 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
 
 import {
   getBestStreak,
@@ -23,6 +30,34 @@ export default function StatsScreen() {
   );
 
   const maxMinutes = Math.max(...dailyMinutes.map((d) => d.minutes), 1);
+  const hasData = sessions.length > 0;
+
+  if (!hasData) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#fff",
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: 32,
+        }}
+      >
+        <Ionicons
+          name="stats-chart-outline"
+          size={56}
+          color="#ccc"
+          style={{ marginBottom: 16 }}
+        />
+        <Text style={{ fontSize: 18, fontWeight: "600", color: "#666", marginBottom: 6 }}>
+          Sin datos todavía
+        </Text>
+        <Text style={{ fontSize: 14, color: "#999", textAlign: "center" }}>
+          Completá tu primera sesión de lectura para ver tus estadísticas acá.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -105,36 +140,69 @@ export default function StatsScreen() {
             height: 120,
           }}
         >
-          {dailyMinutes.map((day) => (
-            <View key={day.label} style={{ alignItems: "center", flex: 1 }}>
-              <Text
-                style={{ fontSize: 11, color: "#666", marginBottom: 4 }}
-              >
-                {day.minutes > 0 ? day.minutes : ""}
-              </Text>
-              <View
-                style={{
-                  width: 24,
-                  height: Math.max(
-                    (day.minutes / maxMinutes) * 90,
-                    day.minutes > 0 ? 4 : 0,
-                  ),
-                  backgroundColor:
-                    day.minutes > 0 ? "#007AFF" : "#ddd",
-                  borderRadius: 4,
-                  minHeight: 4,
-                }}
-              />
-              <Text
-                style={{ fontSize: 11, color: "#999", marginTop: 4 }}
-              >
-                {day.label}
-              </Text>
-            </View>
+          {dailyMinutes.map((day, index) => (
+            <AnimatedBar
+              key={day.label}
+              label={day.label}
+              minutes={day.minutes}
+              maxMinutes={maxMinutes}
+              index={index}
+            />
           ))}
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+function AnimatedBar({
+  label,
+  minutes,
+  maxMinutes,
+  index,
+}: {
+  label: string;
+  minutes: number;
+  maxMinutes: number;
+  index: number;
+}) {
+  const targetHeight = Math.max(
+    (minutes / maxMinutes) * 90,
+    minutes > 0 ? 4 : 0,
+  );
+  const height = useSharedValue(0);
+
+  useEffect(() => {
+    height.value = withDelay(
+      index * 80,
+      withTiming(targetHeight, { duration: 500 }),
+    );
+  }, [targetHeight, index, height]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: height.value,
+  }));
+
+  return (
+    <View style={{ alignItems: "center", flex: 1 }}>
+      <Text style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
+        {minutes > 0 ? minutes : ""}
+      </Text>
+      <Animated.View
+        style={[
+          {
+            width: 24,
+            backgroundColor: minutes > 0 ? "#007AFF" : "#ddd",
+            borderRadius: 4,
+            minHeight: 4,
+          },
+          animatedStyle,
+        ]}
+      />
+      <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+        {label}
+      </Text>
+    </View>
   );
 }
 

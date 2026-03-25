@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
 import { getStreak, getTodayStats } from "@/lib/stats";
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
@@ -113,8 +114,9 @@ export default function HomeScreen() {
                 : 0;
             return (
               <View key={book.id} style={{ marginBottom: 12 }}>
-                <Pressable
+                <AnimatedPressable
                   onPress={() => router.push(`/book/${book.id}`)}
+                  haptic="light"
                   style={{
                     backgroundColor: "#f5f5f5",
                     borderRadius: 12,
@@ -193,8 +195,10 @@ export default function HomeScreen() {
                       </>
                     )}
                   </View>
-                  <Pressable
+                  <AnimatedPressable
                     onPress={() => router.push(`/session/${book.id}`)}
+                    haptic="medium"
+                    scaleDown={0.9}
                     style={{
                       backgroundColor: "#007AFF",
                       borderRadius: 10,
@@ -206,8 +210,8 @@ export default function HomeScreen() {
                     }}
                   >
                     <Ionicons name="play" size={22} color="#fff" />
-                  </Pressable>
-                </Pressable>
+                  </AnimatedPressable>
+                </AnimatedPressable>
               </View>
             );
           })}
@@ -248,8 +252,9 @@ export default function HomeScreen() {
           >
             Marcá un libro como "Leyendo" para empezar a registrar sesiones.
           </Text>
-          <Pressable
+          <AnimatedPressable
             onPress={() => router.push("/book/add")}
+            haptic="medium"
             style={{
               backgroundColor: "#007AFF",
               borderRadius: 10,
@@ -260,7 +265,7 @@ export default function HomeScreen() {
             <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
               Agregar libro
             </Text>
-          </Pressable>
+          </AnimatedPressable>
         </View>
       )}
     </ScrollView>

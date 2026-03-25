@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import AnimatedPressable from "@/components/AnimatedPressable";
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
 import type { BookStatus } from "@/types";
@@ -336,8 +337,9 @@ function ActionButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      haptic="medium"
       style={{
         backgroundColor: color,
         paddingVertical: 12,
@@ -348,6 +350,6 @@ function ActionButton({
       <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
