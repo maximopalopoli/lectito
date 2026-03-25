@@ -1,4 +1,4 @@
-import type { Book } from '@/types';
+import type { BookSearchResult } from '@/types';
 
 // --- Types for Open Library API responses ---
 
@@ -15,10 +15,6 @@ interface OpenLibraryEdition {
 interface OpenLibraryAuthor {
   name: string;
 }
-
-// --- Public types ---
-
-export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'currentPage' | 'status'>;
 
 // --- API functions ---
 
