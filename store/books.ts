@@ -13,7 +13,7 @@ function saveBooks(books: Book[]) {
 export interface BooksState {
   books: Book[];
   _hydrated: boolean;
-  addBook: (book: Omit<Book, 'id' | 'addedAt' | 'currentPage'>) => void;
+  addBook: (book: Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage'>) => void;
   updateBook: (id: string, updates: Partial<Book>) => void;
   deleteBook: (id: string) => void;
   changeStatus: (id: string, status: BookStatus) => void;
@@ -46,6 +46,7 @@ export const useBooksStore = create<BooksState>()((set) => {
             ...book,
             id: randomUUID(),
             addedAt: new Date().toISOString(),
+            completedAt: book.status === 'DONE' ? new Date().toISOString() : null,
             currentPage: 0,
           },
         ];
@@ -72,7 +73,13 @@ export const useBooksStore = create<BooksState>()((set) => {
     changeStatus: (id, status) =>
       set((state) => {
         const books = state.books.map((b) =>
-          b.id === id ? { ...b, status } : b,
+          b.id === id
+            ? {
+                ...b,
+                status,
+                completedAt: status === 'DONE' ? new Date().toISOString() : null,
+              }
+            : b,
         );
         saveBooks(books);
         return { books };

@@ -10,7 +10,8 @@ export interface Book {
   pageCount: number;
   status: BookStatus;
   addedAt: string; // ISO date
+  completedAt: string | null; // ISO date, set when status → DONE
   currentPage: number;
 }
 
-export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'currentPage' | 'status'>;
+export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage' | 'status'>;

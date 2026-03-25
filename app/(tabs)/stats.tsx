@@ -10,20 +10,25 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import Heatmap from "@/components/Heatmap";
 import {
   getBestStreak,
+  getBooksPerMonth,
   getGoalProgress,
   getMinutesPerDayLastWeek,
   getPagesPerDay,
+  getReadingHeatmap,
   getStreak,
   getWeeklyStats,
 } from "@/lib/stats";
+import { useBooksStore } from "@/store/books";
 import { useGoalsStore } from "@/store/goals";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function StatsScreen() {
   const router = useRouter();
   const sessions = useSessionsStore((s) => s.sessions);
+  const books = useBooksStore((s) => s.books);
   const goal = useGoalsStore((s) => s.goal);
   const weekly = useMemo(() => getWeeklyStats(sessions), [sessions]);
   const pagesPerDay7 = useMemo(() => getPagesPerDay(sessions, 7), [sessions]);
@@ -34,8 +39,17 @@ export default function StatsScreen() {
     () => getMinutesPerDayLastWeek(sessions),
     [sessions],
   );
+  const heatmapData = useMemo(
+    () => getReadingHeatmap(sessions),
+    [sessions],
+  );
+  const monthlyBooks = useMemo(
+    () => getBooksPerMonth(books),
+    [books],
+  );
 
   const maxMinutes = Math.max(...dailyMinutes.map((d) => d.minutes), 1);
+  const maxMonthlyBooks = Math.max(...monthlyBooks.map((m) => m.count), 1);
   const hasData = sessions.length > 0;
 
   if (!hasData) {
@@ -132,6 +146,10 @@ export default function StatsScreen() {
         </View>
       </View>
 
+      {/* Heatmap */}
+      <SectionTitle>Actividad de lectura</SectionTitle>
+      <Heatmap data={heatmapData} />
+
       {/* Minutes chart */}
       <SectionTitle>Minutos por día (últimos 7 días)</SectionTitle>
       <View
@@ -160,7 +178,87 @@ export default function StatsScreen() {
           ))}
         </View>
       </View>
+
+      {/* Books per month */}
+      <SectionTitle>Libros terminados</SectionTitle>
+      <View
+        style={{
+          backgroundColor: "#f5f5f5",
+          borderRadius: 12,
+          padding: 16,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            height: 120,
+          }}
+        >
+          {monthlyBooks.map((month, index) => (
+            <MonthlyBookBar
+              key={month.label}
+              label={month.label}
+              count={month.count}
+              maxCount={maxMonthlyBooks}
+              index={index}
+            />
+          ))}
+        </View>
+      </View>
     </ScrollView>
+  );
+}
+
+function MonthlyBookBar({
+  label,
+  count,
+  maxCount,
+  index,
+}: {
+  label: string;
+  count: number;
+  maxCount: number;
+  index: number;
+}) {
+  const targetHeight = Math.max(
+    (count / maxCount) * 90,
+    count > 0 ? 4 : 0,
+  );
+  const height = useSharedValue(0);
+
+  useEffect(() => {
+    height.value = withDelay(
+      index * 80,
+      withTiming(targetHeight, { duration: 500 }),
+    );
+  }, [targetHeight, index, height]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: height.value,
+  }));
+
+  return (
+    <View style={{ alignItems: "center", flex: 1 }}>
+      <Text style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
+        {count > 0 ? count : ""}
+      </Text>
+      <Animated.View
+        style={[
+          {
+            width: 24,
+            backgroundColor: count > 0 ? "#34C759" : "#ddd",
+            borderRadius: 4,
+            minHeight: 4,
+          },
+          animatedStyle,
+        ]}
+      />
+      <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
