@@ -38,7 +38,7 @@ export default function BookDetailScreen() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text style={{ color: "#888", fontSize: 16 }}>Libro no encontrado</Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))} style={{ marginTop: 16 }}>
           <Text style={{ color: "#007AFF", fontSize: 16 }}>Volver</Text>
         </Pressable>
       </View>
@@ -71,7 +71,7 @@ export default function BookDetailScreen() {
           paddingBottom: 12,
         }}
       >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))} style={{ padding: 4 }}>
           <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
         </Pressable>
       </View>
