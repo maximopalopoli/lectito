@@ -1,78 +1,81 @@
 import { create } from 'zustand';
+import { randomUUID } from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Book, BookStatus } from '@/types';
 
 const STORAGE_KEY = 'aleph-books';
 
-function loadBooks(): Book[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch {
-    // Ignore
-  }
-  return [];
-}
-
 function saveBooks(books: Book[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
-  } catch {
-    // Ignore
-  }
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(books)).catch(() => {});
 }
 
 export interface BooksState {
   books: Book[];
+  _hydrated: boolean;
   addBook: (book: Omit<Book, 'id' | 'addedAt' | 'currentPage'>) => void;
   updateBook: (id: string, updates: Partial<Book>) => void;
   deleteBook: (id: string) => void;
   changeStatus: (id: string, status: BookStatus) => void;
 }
 
-export const useBooksStore = create<BooksState>()((set) => ({
-  books: loadBooks(),
+export const useBooksStore = create<BooksState>()((set) => {
+  // Hydrate asynchronously
+  AsyncStorage.getItem(STORAGE_KEY)
+    .then((raw) => {
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          set({ books: parsed, _hydrated: true });
+          return;
+        }
+      }
+      set({ _hydrated: true });
+    })
+    .catch(() => set({ _hydrated: true }));
 
-  addBook: (book) =>
-    set((state) => {
-      const books = [
-        ...state.books,
-        {
-          ...book,
-          id: crypto.randomUUID(),
-          addedAt: new Date().toISOString(),
-          currentPage: 0,
-        },
-      ];
-      saveBooks(books);
-      return { books };
-    }),
+  return {
+    books: [],
+    _hydrated: false,
 
-  updateBook: (id, updates) =>
-    set((state) => {
-      const books = state.books.map((b) =>
-        b.id === id ? { ...b, ...updates } : b,
-      );
-      saveBooks(books);
-      return { books };
-    }),
+    addBook: (book) =>
+      set((state) => {
+        const books = [
+          ...state.books,
+          {
+            ...book,
+            id: randomUUID(),
+            addedAt: new Date().toISOString(),
+            currentPage: 0,
+          },
+        ];
+        saveBooks(books);
+        return { books };
+      }),
 
-  deleteBook: (id) =>
-    set((state) => {
-      const books = state.books.filter((b) => b.id !== id);
-      saveBooks(books);
-      return { books };
-    }),
+    updateBook: (id, updates) =>
+      set((state) => {
+        const books = state.books.map((b) =>
+          b.id === id ? { ...b, ...updates } : b,
+        );
+        saveBooks(books);
+        return { books };
+      }),
 
-  changeStatus: (id, status) =>
-    set((state) => {
-      const books = state.books.map((b) =>
-        b.id === id ? { ...b, status } : b,
-      );
-      saveBooks(books);
-      return { books };
-    }),
-}));
+    deleteBook: (id) =>
+      set((state) => {
+        const books = state.books.filter((b) => b.id !== id);
+        saveBooks(books);
+        return { books };
+      }),
+
+    changeStatus: (id, status) =>
+      set((state) => {
+        const books = state.books.map((b) =>
+          b.id === id ? { ...b, status } : b,
+        );
+        saveBooks(books);
+        return { books };
+      }),
+  };
+});

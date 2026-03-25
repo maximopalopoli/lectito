@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -12,6 +13,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BarcodeScanner from "@/components/BarcodeScanner";
 import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
 import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
@@ -39,49 +41,53 @@ export default function AddBookScreen() {
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [selected, setSelected] = useState<BookSearchResult | null>(null);
   const [status, setStatus] = useState<BookStatus>("TBR");
+  const [showScanner, setShowScanner] = useState(false);
 
-  const handleSearch = async () => {
-    const trimmed = query.trim();
-    if (!trimmed) return;
+  const handleSearch = useCallback(
+    async (overrideQuery?: string) => {
+      const trimmed = (overrideQuery ?? query).trim();
+      if (!trimmed) return;
 
-    setLoading(true);
-    setError(null);
-    setResults([]);
-    setSelected(null);
+      setLoading(true);
+      setError(null);
+      setResults([]);
+      setSelected(null);
 
-    try {
-      let found: BookSearchResult[] = [];
+      try {
+        let found: BookSearchResult[] = [];
 
-      if (looksLikeISBN(trimmed)) {
-        try {
-          const book = await fetchBookByISBN(trimmed);
-          found = [book];
-        } catch {
-          // Fallback to text search
+        if (looksLikeISBN(trimmed)) {
+          try {
+            const book = await fetchBookByISBN(trimmed);
+            found = [book];
+          } catch {
+            // Fallback to text search
+            found = await searchBooksByText(trimmed);
+          }
+        } else {
+          // Open Library text search, Google Books as last resort
           found = await searchBooksByText(trimmed);
+          if (found.length === 0) {
+            found = await searchGoogleBooks(trimmed);
+          }
         }
-      } else {
-        // Open Library text search, Google Books as last resort
-        found = await searchBooksByText(trimmed);
-        if (found.length === 0) {
-          found = await searchGoogleBooks(trimmed);
-        }
-      }
 
-      if (found.length === 0) {
-        setError("No se encontraron resultados");
-      } else {
-        setResults(found);
-        if (found.length === 1) {
-          setSelected(found[0]);
+        if (found.length === 0) {
+          setError("No se encontraron resultados");
+        } else {
+          setResults(found);
+          if (found.length === 1) {
+            setSelected(found[0]);
+          }
         }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error desconocido");
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [query],
+  );
 
   const handleAdd = () => {
     if (!selected) return;
@@ -89,6 +95,25 @@ export default function AddBookScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
+
+  const handleBarcodeScan = useCallback(
+    (isbn: string) => {
+      setShowScanner(false);
+      setQuery(isbn);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      handleSearch(isbn);
+    },
+    [handleSearch],
+  );
+
+  if (showScanner) {
+    return (
+      <BarcodeScanner
+        onScanned={handleBarcodeScan}
+        onClose={() => setShowScanner(false)}
+      />
+    );
+  }
 
   return (
     <ScrollView
@@ -123,7 +148,7 @@ export default function AddBookScreen() {
             onChangeText={setQuery}
             placeholder="ISBN o título del libro"
             returnKeyType="search"
-            onSubmitEditing={handleSearch}
+            onSubmitEditing={() => handleSearch()}
             style={{
               flex: 1,
               borderWidth: 1,
@@ -133,8 +158,22 @@ export default function AddBookScreen() {
               fontSize: 15,
             }}
           />
+          {Platform.OS !== "web" && (
+            <Pressable
+              onPress={() => setShowScanner(true)}
+              style={{
+                backgroundColor: "#f0f0f0",
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderRadius: 8,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontSize: 20 }}>📷</Text>
+            </Pressable>
+          )}
           <Pressable
-            onPress={handleSearch}
+            onPress={() => handleSearch()}
             disabled={loading || !query.trim()}
             style={{
               backgroundColor: loading || !query.trim() ? "#a0c4ff" : "#007AFF",
@@ -163,7 +202,7 @@ export default function AddBookScreen() {
             <Text style={{ color: "#FF3B30", fontSize: 15, textAlign: "center" }}>
               {error}
             </Text>
-            <Pressable onPress={handleSearch} style={{ marginTop: 12 }}>
+            <Pressable onPress={() => handleSearch()} style={{ marginTop: 12 }}>
               <Text style={{ color: "#007AFF", fontSize: 15 }}>Reintentar</Text>
             </Pressable>
           </View>
