@@ -32,6 +32,7 @@ export default function SessionScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
   const book = useBooksStore((s) => s.books.find((b) => b.id === bookId));
+  const updateBook = useBooksStore((s) => s.updateBook);
   const addSession = useSessionsStore((s) => s.addSession);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -90,6 +91,8 @@ export default function SessionScreen() {
       pagesRead,
       note: noteInput.trim() || null,
     });
+
+    updateBook(book.id, { currentPage: page });
 
     router.back();
   };
