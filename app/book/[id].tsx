@@ -211,6 +211,11 @@ export default function BookDetailScreen() {
           {book.status === "READING" && (
             <>
               <ActionButton
+                label="Iniciar sesión de lectura"
+                color="#007AFF"
+                onPress={() => router.push(`/session/${book.id}`)}
+              />
+              <ActionButton
                 label="Actualizar progreso"
                 color="#007AFF"
                 onPress={() => setShowPageInput(!showPageInput)}
