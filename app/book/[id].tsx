@@ -10,6 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useBooksStore } from "@/store/books";
+import { useSessionsStore } from "@/store/sessions";
 import type { BookStatus } from "@/types";
 
 const STATUS_LABEL: Record<BookStatus, string> = {
@@ -25,6 +26,8 @@ export default function BookDetailScreen() {
   const book = useBooksStore((s) => s.books.find((b) => b.id === id));
   const updateBook = useBooksStore((s) => s.updateBook);
   const changeStatus = useBooksStore((s) => s.changeStatus);
+
+  const sessions = useSessionsStore((s) => s.getSessionsByBook(id ?? ""));
 
   const [pageInput, setPageInput] = useState("");
   const [showPageInput, setShowPageInput] = useState(false);
@@ -258,6 +261,51 @@ export default function BookDetailScreen() {
             />
           )}
         </View>
+
+        {/* Session history */}
+        {sessions.length > 0 && (
+          <View style={{ marginTop: 24 }}>
+            <Text style={{ fontWeight: "600", fontSize: 15, marginBottom: 10 }}>
+              Historial de sesiones
+            </Text>
+            {sessions
+              .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+              .map((session) => (
+                <View
+                  key={session.id}
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 8,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, color: "#666" }}>
+                      {new Date(session.startedAt).toLocaleDateString()}
+                    </Text>
+                    <Text style={{ fontSize: 13, fontWeight: "600" }}>
+                      {session.durationMin} min
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 14 }}>
+                    {session.pagesRead} páginas leídas
+                  </Text>
+                  {session.note && (
+                    <Text style={{ fontSize: 13, color: "#666", marginTop: 4, fontStyle: "italic" }}>
+                      {session.note}
+                    </Text>
+                  )}
+                </View>
+              ))}
+          </View>
+        )}
       </View>
     </ScrollView>
   );
