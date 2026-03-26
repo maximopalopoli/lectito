@@ -105,6 +105,7 @@ export default function ReaderScreen() {
   // WebView ready flag
   const webViewReadyRef = useRef(false);
   const pendingBase64Ref = useRef<string | null>(null);
+  const pendingLocationsRef = useRef<string | null>(null);
 
   const readerHtml = useMemo(() => getReaderHtml(), []);
 
@@ -173,12 +174,17 @@ export default function ReaderScreen() {
   // Load ePub (run once on mount)
   useEffect(() => {
     if (!book?.epubUri) return;
-    readEpubAsBase64(book.epubUri).then((base64) => {
+    Promise.all([
+      readEpubAsBase64(book.epubUri),
+      useReaderSettingsStore.getState().getLocations(bookId!),
+    ]).then(([base64, cachedLocations]) => {
       const cfi = useReaderSettingsStore.getState().getPosition(bookId!) ?? undefined;
+      const msg = { type: "load", data: base64, cfi, cachedLocations: cachedLocations ?? undefined };
       if (webViewReadyRef.current) {
-        sendToWebView({ type: "load", data: base64, cfi });
+        sendToWebView(msg);
       } else {
         pendingBase64Ref.current = base64;
+        pendingLocationsRef.current = cachedLocations;
       }
     }).catch(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,8 +216,10 @@ export default function ReaderScreen() {
             type: "load",
             data: pendingBase64Ref.current,
             cfi,
+            cachedLocations: pendingLocationsRef.current ?? undefined,
           });
           pendingBase64Ref.current = null;
+          pendingLocationsRef.current = null;
         }
         break;
 
@@ -232,6 +240,10 @@ export default function ReaderScreen() {
         // Update book's pageCount with epub.js locations count (more accurate than spine items)
         if (msg.totalPages && bookId) {
           updateBook(bookId, { pageCount: msg.totalPages });
+        }
+        // Cache generated locations for instant load next time
+        if (msg.locations && bookId) {
+          useReaderSettingsStore.getState().saveLocations(bookId, msg.locations);
         }
         break;
 

@@ -57,7 +57,7 @@ export function getReaderHtml(): string {
     if (!data || !data.type) return;
 
     switch(data.type) {
-      case 'load': loadBook(data.data, data.cfi); break;
+      case 'load': loadBook(data.data, data.cfi, data.cachedLocations); break;
       case 'next': if (rendition) rendition.next(); break;
       case 'prev': if (rendition) rendition.prev(); break;
       case 'goto': if (rendition && data.cfi) rendition.display(data.cfi); break;
@@ -72,7 +72,7 @@ export function getReaderHtml(): string {
   document.addEventListener('message', onMessage);
   window.addEventListener('message', onMessage);
 
-  function loadBook(base64Data, resumeCfi) {
+  function loadBook(base64Data, resumeCfi, cachedLocations) {
     try {
       var binary = atob(base64Data);
       var bytes = new Uint8Array(binary.length);
@@ -111,11 +111,22 @@ export function getReaderHtml(): string {
         send({ type: 'bookLoaded', toc: toc, totalPages: 0 });
         document.getElementById('loading').style.display = 'none';
 
-        // Generate locations in background — book is already readable
-        book.locations.generate(1024).then(function() {
+        // Load cached locations or generate in background
+        var locationsPromise;
+        if (cachedLocations) {
+          book.locations.load(cachedLocations);
+          locationsPromise = Promise.resolve();
+        } else {
+          locationsPromise = book.locations.generate(1024);
+        }
+        locationsPromise.then(function() {
           locationsReady = true;
           var total = book.locations.length();
-          send({ type: 'locationsReady', totalPages: total });
+          var msg = { type: 'locationsReady', totalPages: total };
+          if (!cachedLocations) {
+            msg.locations = book.locations.save();
+          }
+          send(msg);
           // Re-send current location now that we have percentages
           if (currentCfi) {
             var percent = book.locations.percentageFromCfi(currentCfi);

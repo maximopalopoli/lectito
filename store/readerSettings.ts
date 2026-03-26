@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ReaderPosition, ReaderTheme } from '@/types';
 
 const STORAGE_KEY = 'aleph-reader';
+const LOCATIONS_KEY = 'aleph-locations';
 
 interface ReaderData {
   positions: Record<string, ReaderPosition>;
@@ -27,6 +28,8 @@ export interface ReaderSettingsState {
   savePosition: (bookId: string, cfi: string) => void;
   getPosition: (bookId: string) => string | null;
   updateSettings: (partial: Partial<ReaderTheme>) => void;
+  saveLocations: (bookId: string, locations: string) => void;
+  getLocations: (bookId: string) => Promise<string | null>;
 }
 
 export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) => {
@@ -73,5 +76,26 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
         save({ positions: state.positions, settings });
         return { settings };
       }),
+
+    saveLocations: (bookId, locations) => {
+      AsyncStorage.getItem(LOCATIONS_KEY)
+        .then((raw) => {
+          const cache = raw ? JSON.parse(raw) : {};
+          cache[bookId] = locations;
+          return AsyncStorage.setItem(LOCATIONS_KEY, JSON.stringify(cache));
+        })
+        .catch(() => {});
+    },
+
+    getLocations: async (bookId) => {
+      try {
+        const raw = await AsyncStorage.getItem(LOCATIONS_KEY);
+        if (!raw) return null;
+        const cache = JSON.parse(raw);
+        return cache[bookId] ?? null;
+      } catch {
+        return null;
+      }
+    },
   };
 });
