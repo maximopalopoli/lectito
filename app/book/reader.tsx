@@ -769,28 +769,32 @@ interface ReaderViewProps {
   style?: any;
 }
 
-const NativeWebView = forwardRef<any, ReaderViewProps>(({ html, onMessage, style }, ref) => {
-  const WebView = require("react-native-webview").default;
-  return (
-    <WebView
-      ref={ref}
-      source={{ html }}
-      style={style}
-      onMessage={onMessage}
-      javaScriptEnabled
-      originWhitelist={["*"]}
-      allowFileAccess
-      allowFileAccessFromFileURLs
-      allowUniversalAccessFromFileURLs
-      scrollEnabled={false}
-      bounces={false}
-      showsHorizontalScrollIndicator={false}
-      showsVerticalScrollIndicator={false}
-    />
-  );
-});
+const NativeWebView = forwardRef<any, ReaderViewProps>(
+  function NativeWebView({ html, onMessage, style }, ref) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const WebView = require("react-native-webview").default;
+    return (
+      <WebView
+        ref={ref}
+        source={{ html }}
+        style={style}
+        onMessage={onMessage}
+        javaScriptEnabled
+        originWhitelist={["*"]}
+        allowFileAccess
+        allowFileAccessFromFileURLs
+        allowUniversalAccessFromFileURLs
+        scrollEnabled={false}
+        bounces={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+      />
+    );
+  },
+);
 
-const WebIframe = forwardRef<any, ReaderViewProps>(({ html, onMessage, style }, ref) => {
+const WebIframe = forwardRef<any, ReaderViewProps>(
+  function WebIframe({ html, onMessage, style }, ref) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
@@ -829,4 +833,5 @@ const WebIframe = forwardRef<any, ReaderViewProps>(({ html, onMessage, style }, 
       }}
     />
   );
-});
+  },
+);
