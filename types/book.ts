@@ -12,6 +12,7 @@ export interface Book {
   addedAt: string; // ISO date
   completedAt: string | null; // ISO date, set when status → DONE
   currentPage: number;
+  epubUri: string | null;
 }
 
-export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage' | 'status'>;
+export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage' | 'status' | 'epubUri'>;

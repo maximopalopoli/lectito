@@ -223,6 +223,14 @@ export default function BookDetailScreen() {
             Acciones
           </Text>
 
+          {book.epubUri && (
+            <ActionButton
+              label="Leer ePub"
+              color="#FF9500"
+              onPress={() => router.push({ pathname: "/book/reader", params: { bookId: book.id } })}
+            />
+          )}
+
           {book.status === "TBR" && (
             <ActionButton
               label="Empezar a leer"

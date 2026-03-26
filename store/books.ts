@@ -13,7 +13,7 @@ function saveBooks(books: Book[]) {
 export interface BooksState {
   books: Book[];
   _hydrated: boolean;
-  addBook: (book: Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage'>) => void;
+  addBook: (book: Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage' | 'epubUri'> & { epubUri?: string | null }) => void;
   updateBook: (id: string, updates: Partial<Book>) => void;
   deleteBook: (id: string) => void;
   changeStatus: (id: string, status: BookStatus) => void;
@@ -49,6 +49,7 @@ export const useBooksStore = create<BooksState>()((set) => {
             addedAt: new Date().toISOString(),
             completedAt: book.status === 'DONE' ? new Date().toISOString() : null,
             currentPage: 0,
+            epubUri: book.epubUri ?? null,
           },
         ];
         saveBooks(books);

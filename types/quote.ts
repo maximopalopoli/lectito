@@ -7,5 +7,6 @@ export interface Quote {
   pageNumber: number | null;
   note: string | null;
   color: QuoteColor;
+  cfi: string | null; // epub.js CFI location, null for manual quotes
   createdAt: string; // ISO date
 }

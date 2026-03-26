@@ -20,6 +20,7 @@ import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
 import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
 import { parseEpub } from "@/lib/epubParser";
+import { persistEpub } from "@/lib/epubStorage";
 import type { BookSearchResult, BookStatus } from "@/types";
 
 const SHELVES: { label: string; status: BookStatus }[] = [
@@ -45,6 +46,7 @@ export default function AddBookScreen() {
   const [selected, setSelected] = useState<BookSearchResult | null>(null);
   const [status, setStatus] = useState<BookStatus>("TBR");
   const [showScanner, setShowScanner] = useState(false);
+  const [epubUri, setEpubUri] = useState<string | null>(null);
 
   const handleSearch = useCallback(
     async (overrideQuery?: string) => {
@@ -94,7 +96,7 @@ export default function AddBookScreen() {
 
   const handleAdd = () => {
     if (!selected) return;
-    addBook({ ...selected, status });
+    addBook({ ...selected, status, epubUri });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (router.canGoBack()) {
       router.back();
@@ -116,8 +118,16 @@ export default function AddBookScreen() {
       setError(null);
       setResults([]);
       setSelected(null);
+      setEpubUri(null);
 
-      const book = await parseEpub(result.assets[0].uri);
+      const asset = result.assets[0];
+      const book = await parseEpub(asset.uri);
+
+      // Persist ePub to permanent storage
+      const safeName = book.title.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
+      const permanentUri = await persistEpub(asset.uri, safeName);
+      setEpubUri(permanentUri);
+
       setResults([book]);
       setSelected(book);
     } catch (e) {

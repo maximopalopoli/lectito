@@ -19,6 +19,7 @@ export interface QuotesState {
     pageNumber?: number | null,
     note?: string | null,
     color?: QuoteColor,
+    cfi?: string | null,
   ) => void;
   updateQuote: (id: string, updates: Partial<Quote>) => void;
   deleteQuote: (id: string) => void;
@@ -43,7 +44,7 @@ export const useQuotesStore = create<QuotesState>()((set) => {
     quotes: [],
     _hydrated: false,
 
-    addQuote: (bookId, text, pageNumber, note, color) =>
+    addQuote: (bookId, text, pageNumber, note, color, cfi) =>
       set((state) => {
         const quotes = [
           ...state.quotes,
@@ -54,6 +55,7 @@ export const useQuotesStore = create<QuotesState>()((set) => {
             pageNumber: pageNumber ?? null,
             note: note ?? null,
             color: color ?? 'yellow',
+            cfi: cfi ?? null,
             createdAt: new Date().toISOString(),
           },
         ];

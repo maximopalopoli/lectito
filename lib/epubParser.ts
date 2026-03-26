@@ -140,7 +140,7 @@ async function extractCover(
     const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
     if (Platform.OS === 'web') {
-      const blob = new Blob([coverBytes], { type: mimeType });
+      const blob = new Blob([coverBytes.buffer as ArrayBuffer], { type: mimeType });
       return URL.createObjectURL(blob);
     }
 
