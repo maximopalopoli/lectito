@@ -341,43 +341,43 @@ export default function ReaderScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: themeBg }}>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Top toolbar */}
-      {toolbarVisible && (
-        <View
-          style={{
-            paddingTop: 50,
-            paddingBottom: 10,
-            paddingHorizontal: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: themeBg,
-            borderBottomWidth: 1,
-            borderBottomColor: readerSettings.theme === "dark" ? "#333" : "#e0e0e0",
-          }}
+      {/* Top toolbar — always takes space, content hidden via opacity */}
+      <View
+        style={{
+          paddingTop: 40,
+          paddingBottom: 10,
+          paddingHorizontal: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          backgroundColor: themeBg,
+          borderBottomWidth: 1,
+          borderBottomColor: readerSettings.theme === "dark" ? "#333" : "#e0e0e0",
+          opacity: toolbarVisible ? 1 : 0,
+        }}
+        pointerEvents={toolbarVisible ? "auto" : "none"}
+      >
+        <Pressable onPress={handleBack} hitSlop={8}>
+          <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+        </Pressable>
+        <Text
+          style={{ flex: 1, textAlign: "center", fontSize: 14, fontWeight: "600", color: themeFg, marginHorizontal: 8 }}
+          numberOfLines={1}
         >
-          <Pressable onPress={handleBack} hitSlop={8}>
-            <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+          {book.title}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 16 }}>
+          <Pressable onPress={() => { setQuoteMode(true); setToolbarVisible(false); }} hitSlop={8}>
+            <Text style={{ fontSize: 18 }}>✏️</Text>
           </Pressable>
-          <Text
-            style={{ flex: 1, textAlign: "center", fontSize: 14, fontWeight: "600", color: themeFg, marginHorizontal: 8 }}
-            numberOfLines={1}
-          >
-            {book.title}
-          </Text>
-          <View style={{ flexDirection: "row", gap: 16 }}>
-            <Pressable onPress={() => { setQuoteMode(true); setToolbarVisible(false); }} hitSlop={8}>
-              <Text style={{ fontSize: 18 }}>✏️</Text>
-            </Pressable>
-            <Pressable onPress={() => setShowToc(true)} hitSlop={8}>
-              <Text style={{ fontSize: 18 }}>📑</Text>
-            </Pressable>
-            <Pressable onPress={() => setShowSettings(true)} hitSlop={8}>
-              <Text style={{ fontSize: 18 }}>⚙️</Text>
-            </Pressable>
-          </View>
+          <Pressable onPress={() => setShowToc(true)} hitSlop={8}>
+            <Text style={{ fontSize: 18 }}>📑</Text>
+          </Pressable>
+          <Pressable onPress={() => setShowSettings(true)} hitSlop={8}>
+            <Text style={{ fontSize: 18 }}>⚙️</Text>
+          </Pressable>
         </View>
-      )}
+      </View>
 
       {/* Reader view */}
       <View style={{ flex: 1 }}>
@@ -428,73 +428,97 @@ export default function ReaderScreen() {
         )}
       </View>
 
-      {/* Quote mode banner */}
+      {/* Quote mode hint — top, absolutely positioned */}
       {quoteMode && (
         <View
           style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            paddingTop: 44,
+            paddingBottom: 8,
+            paddingHorizontal: 16,
+            backgroundColor: "#FBBF24",
+            zIndex: 20,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 12, color: "#666" }}>
+            Mantené presionado para seleccionar texto
+          </Text>
+        </View>
+      )}
+
+      {/* Quote mode buttons — bottom, absolutely positioned */}
+      {quoteMode && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
             paddingVertical: 10,
             paddingHorizontal: 16,
             backgroundColor: "#FBBF24",
             paddingBottom: 30,
+            zIndex: 20,
+            flexDirection: "row",
+            gap: 12,
           }}
         >
-          <Text style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-            Mantené presionado para seleccionar texto
-          </Text>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable
-              onPress={handleConfirmQuote}
-              disabled={!pendingQuote}
-              style={{
-                flex: 1,
-                paddingVertical: 10,
-                borderRadius: 8,
-                backgroundColor: pendingQuote ? "#34C759" : "#ccc",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>Guardar cita</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => { setQuoteMode(false); setPendingQuote(null); }}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-                borderRadius: 8,
-                backgroundColor: "rgba(0,0,0,0.1)",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#FF3B30" }}>Cancelar</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={handleConfirmQuote}
+            disabled={!pendingQuote}
+            style={{
+              flex: 1,
+              paddingVertical: 10,
+              borderRadius: 8,
+              backgroundColor: pendingQuote ? "#34C759" : "#ccc",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>Guardar cita</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { setQuoteMode(false); setPendingQuote(null); }}
+            style={{
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              backgroundColor: "rgba(0,0,0,0.1)",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#FF3B30" }}>Cancelar</Text>
+          </Pressable>
         </View>
       )}
 
-      {/* Bottom toolbar */}
-      {toolbarVisible && !quoteMode && (
-        <View
-          style={{
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            backgroundColor: themeBg,
-            borderTopWidth: 1,
-            borderTopColor: readerSettings.theme === "dark" ? "#333" : "#e0e0e0",
-            paddingBottom: 30,
-          }}
-        >
-          <Text style={{ fontSize: 13, color: themeFg }}>
-            {pageInfo.chapter ? `${pageInfo.chapter} · ` : ""}
-            pág. {pageInfo.location}/{book.pageCount || 0} · {pageInfo.percent}%
-          </Text>
-          <Text style={{ fontSize: 13, color: "#888" }}>
-            {formatTime(elapsed)}
-          </Text>
-        </View>
-      )}
+      {/* Bottom toolbar — always takes space, content hidden via opacity */}
+      <View
+        style={{
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          backgroundColor: themeBg,
+          borderTopWidth: 1,
+          borderTopColor: readerSettings.theme === "dark" ? "#333" : "#e0e0e0",
+          paddingBottom: 20,
+          opacity: toolbarVisible && !quoteMode ? 1 : 0,
+        }}
+        pointerEvents={toolbarVisible && !quoteMode ? "auto" : "none"}
+      >
+        <Text style={{ fontSize: 13, color: themeFg }}>
+          {pageInfo.chapter ? `${pageInfo.chapter} · ` : ""}
+          {pageInfo.percent}%
+        </Text>
+        <Text style={{ fontSize: 13, color: "#888" }}>
+          {formatTime(elapsed)}
+        </Text>
+      </View>
 
       {/* Settings modal */}
       <Modal visible={showSettings} transparent animationType="slide">
