@@ -10,6 +10,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import ReviewModal from "@/components/ReviewModal";
+import StarRating from "@/components/StarRating";
 import { useBooksStore } from "@/store/books";
 import { useQuotesStore } from "@/store/quotes";
 import { useSessionsStore } from "@/store/sessions";
@@ -51,6 +53,8 @@ export default function BookDetailScreen() {
 
   const [pageInput, setPageInput] = useState("");
   const [showPageInput, setShowPageInput] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewMode, setReviewMode] = useState<"complete" | "edit">("complete");
 
   if (!book) {
     return (
@@ -217,6 +221,44 @@ export default function BookDetailScreen() {
           </View>
         )}
 
+        {/* Rating & Review */}
+        {book.status === "DONE" && (
+          <View style={{ marginTop: 24 }}>
+            <Text style={{ fontWeight: "600", fontSize: 15, marginBottom: 10 }}>
+              Mi reseña
+            </Text>
+            {book.rating != null ? (
+              <View style={{ marginBottom: 8 }}>
+                <StarRating rating={book.rating} readonly size={24} />
+              </View>
+            ) : (
+              <Text style={{ color: "#999", fontSize: 13, marginBottom: 8 }}>
+                Sin calificación
+              </Text>
+            )}
+            {book.review ? (
+              <Text style={{ fontSize: 14, color: "#333", lineHeight: 20, fontStyle: "italic" }}>
+                {book.review}
+              </Text>
+            ) : (
+              <Text style={{ color: "#999", fontSize: 13 }}>
+                Sin reseña
+              </Text>
+            )}
+            <Pressable
+              onPress={() => {
+                setReviewMode("edit");
+                setShowReviewModal(true);
+              }}
+              style={{ marginTop: 10 }}
+            >
+              <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "600" }}>
+                {book.rating != null || book.review ? "Editar reseña" : "Agregar reseña"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Actions */}
         <View style={{ marginTop: 24, gap: 10 }}>
           <Text style={{ fontWeight: "600", fontSize: 15, marginBottom: 4 }}>
@@ -255,8 +297,8 @@ export default function BookDetailScreen() {
                 label="Marcar como leído"
                 color="#34C759"
                 onPress={() => {
-                  updateBook(book.id, { currentPage: book.pageCount });
-                  changeStatus(book.id, "DONE");
+                  setReviewMode("complete");
+                  setShowReviewModal(true);
                 }}
               />
               <ActionButton
@@ -433,6 +475,28 @@ export default function BookDetailScreen() {
           )}
         </View>
       </View>
+
+      <ReviewModal
+        visible={showReviewModal}
+        initialRating={book.rating}
+        initialReview={book.review}
+        onSave={(rating, review) => {
+          if (reviewMode === "complete") {
+            updateBook(book.id, { currentPage: book.pageCount, rating, review });
+            changeStatus(book.id, "DONE");
+          } else {
+            updateBook(book.id, { rating, review });
+          }
+          setShowReviewModal(false);
+        }}
+        onSkip={() => {
+          if (reviewMode === "complete") {
+            updateBook(book.id, { currentPage: book.pageCount });
+            changeStatus(book.id, "DONE");
+          }
+          setShowReviewModal(false);
+        }}
+      />
     </ScrollView>
   );
 }

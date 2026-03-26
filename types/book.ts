@@ -13,6 +13,8 @@ export interface Book {
   completedAt: string | null; // ISO date, set when status → DONE
   currentPage: number;
   epubUri: string | null;
+  rating: number | null;    // 1-5 stars
+  review: string | null;    // free-text personal review
 }
 
 export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage' | 'status' | 'epubUri'>;

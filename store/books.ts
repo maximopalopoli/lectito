@@ -50,6 +50,8 @@ export const useBooksStore = create<BooksState>()((set) => {
             completedAt: book.status === 'DONE' ? new Date().toISOString() : null,
             currentPage: 0,
             epubUri: book.epubUri ?? null,
+            rating: null,
+            review: null,
           },
         ];
         saveBooks(books);
