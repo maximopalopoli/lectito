@@ -280,6 +280,12 @@ export default function BookDetailScreen() {
               }}
             />
           )}
+
+          <ActionButton
+            label="Compartir card"
+            color="#8B5CF6"
+            onPress={() => router.push({ pathname: "/book/share", params: { bookId: book.id } })}
+          />
         </View>
 
         {/* Session history */}

@@ -9,6 +9,10 @@ export default function RootLayout() {
       <Stack.Screen name="session/[bookId]" options={{ headerShown: false }} />
       <Stack.Screen name="goals/configure" options={{ headerShown: false }} />
       <Stack.Screen name="settings/backup" options={{ headerShown: false }} />
+      <Stack.Screen name="share-stats" options={{ headerShown: false }} />
+      <Stack.Screen name="book/share" options={{ headerShown: false }} />
+      <Stack.Screen name="book/quotes" options={{ headerShown: false }} />
+      <Stack.Screen name="book/quote-form" options={{ headerShown: false }} />
     </Stack>
   );
 }
