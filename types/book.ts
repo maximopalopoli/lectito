@@ -15,6 +15,7 @@ export interface Book {
   epubUri: string | null;
   rating: number | null;    // 1-5 stars
   review: string | null;    // free-text personal review
+  tags: string[];           // custom user tags (genre, theme, etc.)
 }
 
 export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage' | 'status' | 'epubUri'>;

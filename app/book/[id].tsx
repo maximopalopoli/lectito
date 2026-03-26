@@ -12,6 +12,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import ReviewModal from "@/components/ReviewModal";
 import StarRating from "@/components/StarRating";
+import TagBadge from "@/components/TagBadge";
+import TagsModal from "@/components/TagsModal";
 import { useBooksStore } from "@/store/books";
 import { useQuotesStore } from "@/store/quotes";
 import { useSessionsStore } from "@/store/sessions";
@@ -55,6 +57,7 @@ export default function BookDetailScreen() {
   const [showPageInput, setShowPageInput] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewMode, setReviewMode] = useState<"complete" | "edit">("complete");
+  const [showTagsModal, setShowTagsModal] = useState(false);
 
   if (!book) {
     return (
@@ -258,6 +261,36 @@ export default function BookDetailScreen() {
             </Pressable>
           </View>
         )}
+
+        {/* Tags */}
+        <View style={{ marginTop: 24 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ fontWeight: "600", fontSize: 15 }}>Etiquetas</Text>
+            <Pressable onPress={() => setShowTagsModal(true)}>
+              <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "600" }}>
+                {(book.tags ?? []).length > 0 ? "Editar" : "+ Agregar"}
+              </Text>
+            </Pressable>
+          </View>
+          {(book.tags ?? []).length > 0 ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              {book.tags.map((tag) => (
+                <TagBadge key={tag} label={tag} />
+              ))}
+            </View>
+          ) : (
+            <Text style={{ color: "#999", fontSize: 13 }}>
+              Sin etiquetas
+            </Text>
+          )}
+        </View>
 
         {/* Actions */}
         <View style={{ marginTop: 24, gap: 10 }}>
@@ -475,6 +508,17 @@ export default function BookDetailScreen() {
           )}
         </View>
       </View>
+
+      <TagsModal
+        visible={showTagsModal}
+        bookId={book.id}
+        bookTags={book.tags ?? []}
+        onSave={(tags) => {
+          updateBook(book.id, { tags });
+          setShowTagsModal(false);
+        }}
+        onClose={() => setShowTagsModal(false)}
+      />
 
       <ReviewModal
         visible={showReviewModal}

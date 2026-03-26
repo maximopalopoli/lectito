@@ -52,6 +52,7 @@ export const useBooksStore = create<BooksState>()((set) => {
             epubUri: book.epubUri ?? null,
             rating: null,
             review: null,
+            tags: [],
           },
         ];
         saveBooks(books);

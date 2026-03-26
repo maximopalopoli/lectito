@@ -67,6 +67,30 @@ export default function BookCard({ book, onPress, onDelete }: BookCardProps) {
             ? ` · ${book.currentPage}/${book.pageCount} (${Math.round((book.currentPage / book.pageCount) * 100)}%)`
             : ` · ${book.pageCount} pp`}
         </Text>
+        {(book.tags ?? []).length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4, gap: 4 }}>
+            {book.tags.slice(0, 3).map((tag) => (
+              <Text
+                key={tag}
+                style={{
+                  fontSize: 10,
+                  color: "#1A73E8",
+                  backgroundColor: "#E8F0FE",
+                  borderRadius: 6,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                }}
+              >
+                {tag}
+              </Text>
+            ))}
+            {book.tags.length > 3 && (
+              <Text style={{ fontSize: 10, color: "#999" }}>
+                +{book.tags.length - 3}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Delete */}
