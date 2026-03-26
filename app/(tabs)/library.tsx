@@ -54,21 +54,40 @@ export default function LibraryScreen() {
         }}
       >
         <Text style={{ fontSize: 28, fontWeight: "bold" }}>Biblioteca</Text>
-        <AnimatedPressable
-          onPress={() => router.push("/book/add")}
-          haptic="medium"
-          scaleDown={0.9}
-          style={{
-            backgroundColor: "#007AFF",
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginTop: -2 }}>+</Text>
-        </AnimatedPressable>
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+          {activeTab === "TBR" && (
+            <AnimatedPressable
+              onPress={() => router.push("/recommendations")}
+              haptic="light"
+              scaleDown={0.9}
+              style={{
+                backgroundColor: "#f0f7ff",
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Ionicons name="compass-outline" size={20} color="#007AFF" />
+            </AnimatedPressable>
+          )}
+          <AnimatedPressable
+            onPress={() => router.push("/book/add")}
+            haptic="medium"
+            scaleDown={0.9}
+            style={{
+              backgroundColor: "#007AFF",
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginTop: -2 }}>+</Text>
+          </AnimatedPressable>
+        </View>
       </View>
 
       {/* Tabs */}

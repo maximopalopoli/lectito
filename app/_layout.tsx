@@ -13,6 +13,7 @@ export default function RootLayout() {
       <Stack.Screen name="book/share" options={{ headerShown: false }} />
       <Stack.Screen name="book/quotes" options={{ headerShown: false }} />
       <Stack.Screen name="book/quote-form" options={{ headerShown: false }} />
+      <Stack.Screen name="recommendations" options={{ headerShown: false }} />
     </Stack>
   );
 }

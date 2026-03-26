@@ -1,4 +1,4 @@
-import type { BookSearchResult } from '@/types';
+import type { BookSearchResult, RecommendationCandidate } from '@/types';
 import fetchWithTimeout from './fetchWithTimeout';
 
 // --- Types for Open Library API responses ---
@@ -70,6 +70,7 @@ interface OpenLibrarySearchResponse {
 }
 
 interface OpenLibrarySearchDoc {
+  key?: string;
   title: string;
   author_name?: string[];
   isbn?: string[];
@@ -113,6 +114,127 @@ export async function searchBooksByText(query: string): Promise<BookSearchResult
   return data.docs
     .map(searchDocToResult)
     .filter((book): book is BookSearchResult => book !== null);
+}
+
+// --- Subject and recommendation helpers ---
+
+const SUBJECTS_BLOCKLIST = new Set([
+  'fiction',
+  'literature',
+  'accessible book',
+  'protected daisy',
+  'large type books',
+  'juvenile fiction',
+  'in library',
+  'lending library',
+  'open library staff picks',
+  'internet archive wishlist',
+  'overdrive',
+  'nonfiction',
+]);
+
+interface OpenLibraryWork {
+  key: string;
+  subjects?: string[];
+}
+
+interface OpenLibraryEditionForSubjects {
+  works?: { key: string }[];
+}
+
+interface OpenLibrarySubjectResponse {
+  works?: OpenLibrarySubjectWork[];
+}
+
+interface OpenLibrarySubjectWork {
+  key: string;
+  title: string;
+  authors?: { name: string }[];
+  cover_id?: number;
+  ia?: string[];
+  availability?: { isbn?: string };
+}
+
+export async function fetchSubjectsForBook(isbn: string): Promise<string[]> {
+  const normalized = normalizeISBN(isbn);
+  if (!normalized) return [];
+
+  const editionRes = await fetchWithTimeout(`${BASE_URL}/isbn/${normalized}.json`);
+  if (!editionRes.ok) return [];
+
+  const edition: OpenLibraryEditionForSubjects = await editionRes.json();
+  const workKey = edition.works?.[0]?.key;
+  if (!workKey) return [];
+
+  const workRes = await fetchWithTimeout(`${BASE_URL}${workKey}.json`);
+  if (!workRes.ok) return [];
+
+  const work: OpenLibraryWork = await workRes.json();
+  if (!work.subjects?.length) return [];
+
+  return work.subjects
+    .map((s) => s.toLowerCase().trim())
+    .filter((s) => !SUBJECTS_BLOCKLIST.has(s));
+}
+
+function subjectToSlug(subject: string): string {
+  return subject.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+}
+
+export async function searchBooksByAuthor(
+  author: string,
+  limit = 10,
+): Promise<RecommendationCandidate[]> {
+  const url = `${BASE_URL}/search.json?author=${encodeURIComponent(author)}&limit=${limit}&fields=title,author_name,isbn,cover_i,number_of_pages_median,key`;
+  const res = await fetchWithTimeout(url);
+  if (!res.ok) return [];
+
+  const data: OpenLibrarySearchResponse = await res.json();
+
+  return data.docs
+    .filter((d) => d.title)
+    .map((d) => {
+      const isbn13 = d.isbn?.find((i) => i.length === 13) ?? null;
+      const isbn10 = d.isbn?.find((i) => i.length === 10) ?? null;
+      return {
+        title: d.title,
+        authors: d.author_name ?? ['Autor desconocido'],
+        coverUrl: d.cover_i ? `${COVERS_BY_ID_URL}/${d.cover_i}-L.jpg` : null,
+        isbn13,
+        isbn10,
+        pageCount: d.number_of_pages_median ?? 0,
+        subjects: [`autor: ${author}`],
+        openLibraryKey: d.key ?? isbn13 ?? isbn10 ?? d.title,
+      };
+    });
+}
+
+export async function fetchBooksBySubject(
+  subject: string,
+  limit = 10,
+): Promise<RecommendationCandidate[]> {
+  const slug = subjectToSlug(subject);
+  if (!slug) return [];
+
+  const url = `${BASE_URL}/subjects/${slug}.json?limit=${limit}`;
+  const res = await fetchWithTimeout(url);
+  if (!res.ok) return [];
+
+  const data: OpenLibrarySubjectResponse = await res.json();
+  if (!data.works?.length) return [];
+
+  return data.works
+    .filter((w) => w.title && w.key)
+    .map((w) => ({
+      title: w.title,
+      authors: w.authors?.map((a) => a.name) ?? ['Autor desconocido'],
+      coverUrl: w.cover_id ? `${COVERS_BY_ID_URL}/${w.cover_id}-L.jpg` : null,
+      isbn13: null,
+      isbn10: null,
+      pageCount: 0,
+      subjects: [subject],
+      openLibraryKey: w.key,
+    }));
 }
 
 export async function fetchBookByISBN(isbn: string): Promise<BookSearchResult> {
