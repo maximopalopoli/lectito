@@ -4,9 +4,10 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 
 import { useBooksStore } from '@/store/books';
+import { useQuotesStore } from '@/store/quotes';
 import { useSessionsStore } from '@/store/sessions';
 import { useGoalsStore } from '@/store/goals';
-import type { Book, Goal, Session } from '@/types';
+import type { Book, Goal, Quote, Session } from '@/types';
 
 interface BackupData {
   version: number;
@@ -14,12 +15,14 @@ interface BackupData {
   books: Book[];
   sessions: Session[];
   goal: Goal | null;
+  quotes?: Quote[];
 }
 
 export async function exportBackup(): Promise<void> {
   const books = useBooksStore.getState().books;
   const sessions = useSessionsStore.getState().sessions;
   const goal = useGoalsStore.getState().goal;
+  const quotes = useQuotesStore.getState().quotes;
 
   const data: BackupData = {
     version: 1,
@@ -27,6 +30,7 @@ export async function exportBackup(): Promise<void> {
     books,
     sessions,
     goal,
+    quotes,
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -94,6 +98,10 @@ export async function importBackup(): Promise<{ books: number; sessions: number 
     useGoalsStore.getState().setGoal(backup.goal);
   } else {
     useGoalsStore.getState().clearGoal();
+  }
+
+  if (Array.isArray(backup.quotes)) {
+    useQuotesStore.getState().replaceQuotes(backup.quotes);
   }
 
   return { books: backup.books.length, sessions: backup.sessions.length };

@@ -208,6 +208,23 @@ export default function StatsScreen() {
         </View>
       </View>
 
+      {/* Share stats */}
+      <AnimatedPressable
+        onPress={() => router.push("/share-stats")}
+        haptic="medium"
+        style={{
+          backgroundColor: "#8B5CF6",
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: "center",
+          marginTop: 32,
+        }}
+      >
+        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+          Compartir mi resumen
+        </Text>
+      </AnimatedPressable>
+
       {/* Backup */}
       <AnimatedPressable
         onPress={() => router.push("/settings/backup")}

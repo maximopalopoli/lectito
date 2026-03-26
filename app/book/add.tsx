@@ -12,11 +12,15 @@ import {
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
+import * as DocumentPicker from "expo-document-picker";
+
 import AnimatedPressable from "@/components/AnimatedPressable";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
 import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
+import { parseEpub } from "@/lib/epubParser";
+import { persistEpub } from "@/lib/epubStorage";
 import type { BookSearchResult, BookStatus } from "@/types";
 
 const SHELVES: { label: string; status: BookStatus }[] = [
@@ -42,6 +46,7 @@ export default function AddBookScreen() {
   const [selected, setSelected] = useState<BookSearchResult | null>(null);
   const [status, setStatus] = useState<BookStatus>("TBR");
   const [showScanner, setShowScanner] = useState(false);
+  const [epubUri, setEpubUri] = useState<string | null>(null);
 
   const handleSearch = useCallback(
     async (overrideQuery?: string) => {
@@ -91,10 +96,46 @@ export default function AddBookScreen() {
 
   const handleAdd = () => {
     if (!selected) return;
-    addBook({ ...selected, status });
+    addBook({ ...selected, status, epubUri });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
+
+  const handleImportEpub = useCallback(async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/epub+zip",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || result.assets.length === 0) return;
+
+      setLoading(true);
+      setError(null);
+      setResults([]);
+      setSelected(null);
+      setEpubUri(null);
+
+      const asset = result.assets[0];
+      const book = await parseEpub(asset.uri);
+
+      // Persist ePub to permanent storage
+      const safeName = book.title.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
+      const permanentUri = await persistEpub(asset.uri, safeName);
+      setEpubUri(permanentUri);
+
+      setResults([book]);
+      setSelected(book);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo leer el ePub");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const handleBarcodeScan = useCallback(
     (isbn: string) => {
@@ -186,6 +227,30 @@ export default function AddBookScreen() {
             <Text style={{ color: "#fff", fontWeight: "600" }}>Buscar</Text>
           </Pressable>
         </View>
+
+        {/* Import ePub */}
+        <Pressable
+          onPress={handleImportEpub}
+          disabled={loading}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 8,
+            marginBottom: 16,
+            opacity: loading ? 0.5 : 1,
+          }}
+        >
+          <Text style={{ fontSize: 16 }}>📄</Text>
+          <Text style={{ fontSize: 14, color: "#333", fontWeight: "500" }}>
+            Importar desde ePub
+          </Text>
+        </Pressable>
 
         {/* Loading */}
         {loading && (

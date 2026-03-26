@@ -11,8 +11,17 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
 import { useBooksStore } from "@/store/books";
+import { useQuotesStore } from "@/store/quotes";
 import { useSessionsStore } from "@/store/sessions";
-import type { BookStatus } from "@/types";
+import type { BookStatus, QuoteColor } from "@/types";
+
+const COLOR_HEX: Record<QuoteColor, string> = {
+  yellow: '#FBBF24',
+  blue: '#60A5FA',
+  green: '#34D399',
+  pink: '#F472B6',
+  purple: '#A78BFA',
+};
 
 const STATUS_LABEL: Record<BookStatus, string> = {
   TBR: "Quiero leer",
@@ -28,9 +37,17 @@ export default function BookDetailScreen() {
   const updateBook = useBooksStore((s) => s.updateBook);
   const changeStatus = useBooksStore((s) => s.changeStatus);
   const allSessions = useSessionsStore((s) => s.sessions);
+  const allQuotes = useQuotesStore((s) => s.quotes);
 
   const book = useMemo(() => books.find((b) => b.id === id), [books, id]);
   const sessions = useMemo(() => allSessions.filter((s) => s.bookId === id), [allSessions, id]);
+  const quotes = useMemo(
+    () =>
+      allQuotes
+        .filter((q) => q.bookId === id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [allQuotes, id],
+  );
 
   const [pageInput, setPageInput] = useState("");
   const [showPageInput, setShowPageInput] = useState(false);
@@ -206,6 +223,14 @@ export default function BookDetailScreen() {
             Acciones
           </Text>
 
+          {book.epubUri && (
+            <ActionButton
+              label="Leer ePub"
+              color="#FF9500"
+              onPress={() => router.push({ pathname: "/book/reader", params: { bookId: book.id } })}
+            />
+          )}
+
           {book.status === "TBR" && (
             <ActionButton
               label="Empezar a leer"
@@ -263,6 +288,12 @@ export default function BookDetailScreen() {
               }}
             />
           )}
+
+          <ActionButton
+            label="Compartir card"
+            color="#8B5CF6"
+            onPress={() => router.push({ pathname: "/book/share", params: { bookId: book.id } })}
+          />
         </View>
 
         {/* Session history */}
@@ -309,6 +340,98 @@ export default function BookDetailScreen() {
               ))}
           </View>
         )}
+
+        {/* Quotes section */}
+        <View style={{ marginTop: 24 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ fontWeight: "600", fontSize: 15 }}>
+              Citas{quotes.length > 0 ? ` (${quotes.length})` : ""}
+            </Text>
+            <AnimatedPressable
+              onPress={() =>
+                router.push({ pathname: "/book/quote-form", params: { bookId: book.id } })
+              }
+              haptic="light"
+            >
+              <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "600" }}>
+                + Agregar
+              </Text>
+            </AnimatedPressable>
+          </View>
+
+          {quotes.length === 0 ? (
+            <View
+              style={{
+                backgroundColor: "#f9f9f9",
+                borderRadius: 10,
+                padding: 20,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontSize: 28, marginBottom: 6 }}>{"\u201C\u201D"}</Text>
+              <Text style={{ color: "#999", fontSize: 13, textAlign: "center" }}>
+                Guarda citas y pasajes memorables de este libro.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {quotes.slice(0, 3).map((quote) => (
+                <Pressable
+                  key={quote.id}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/book/quote-form",
+                      params: { bookId: book.id, quoteId: quote.id },
+                    })
+                  }
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 8,
+                    borderLeftWidth: 4,
+                    borderLeftColor: COLOR_HEX[quote.color],
+                  }}
+                >
+                  <Text
+                    style={{ fontSize: 14, fontStyle: "italic", lineHeight: 20 }}
+                    numberOfLines={3}
+                  >
+                    &ldquo;{quote.text}&rdquo;
+                  </Text>
+                  {quote.pageNumber != null && (
+                    <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+                      Pag. {quote.pageNumber}
+                    </Text>
+                  )}
+                </Pressable>
+              ))}
+              {quotes.length > 3 && (
+                <AnimatedPressable
+                  onPress={() =>
+                    router.push({ pathname: "/book/quotes", params: { bookId: book.id } })
+                  }
+                  haptic="light"
+                  style={{
+                    paddingVertical: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#007AFF", fontSize: 14 }}>
+                    Ver todas ({quotes.length})
+                  </Text>
+                </AnimatedPressable>
+              )}
+            </>
+          )}
+        </View>
       </View>
     </ScrollView>
   );
