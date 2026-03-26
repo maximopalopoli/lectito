@@ -105,21 +105,24 @@ export function getReaderHtml(): string {
       });
 
       book.ready.then(function() {
-        return book.locations.generate(1024);
-      }).then(function() {
-        locationsReady = true;
         var toc = book.navigation ? book.navigation.toc.map(function(ch) {
           return { label: ch.label.trim(), href: ch.href };
         }) : [];
-        var total = book.locations ? book.locations.length() : 0;
-        send({ type: 'bookLoaded', toc: toc, totalPages: total });
+        send({ type: 'bookLoaded', toc: toc, totalPages: 0 });
         document.getElementById('loading').style.display = 'none';
-        // Re-send current location now that we have percentages
-        if (currentCfi) {
-          var percent = book.locations.percentageFromCfi(currentCfi);
-          var loc = book.locations.locationFromCfi(currentCfi);
-          send({ type: 'relocated', cfi: currentCfi, page: 0, total: 0, rawPercent: percent, percent: Math.round(percent * 100), chapter: '', location: loc });
-        }
+
+        // Generate locations in background — book is already readable
+        book.locations.generate(1024).then(function() {
+          locationsReady = true;
+          var total = book.locations.length();
+          send({ type: 'locationsReady', totalPages: total });
+          // Re-send current location now that we have percentages
+          if (currentCfi) {
+            var percent = book.locations.percentageFromCfi(currentCfi);
+            var loc = book.locations.locationFromCfi(currentCfi);
+            send({ type: 'relocated', cfi: currentCfi, page: 0, total: 0, rawPercent: percent, percent: Math.round(percent * 100), chapter: '', location: loc });
+          }
+        });
       });
 
       rendition.on('relocated', function(location) {

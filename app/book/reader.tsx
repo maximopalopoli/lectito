@@ -218,10 +218,6 @@ export default function ReaderScreen() {
       case "bookLoaded":
         setLoading(false);
         setToc(msg.toc ?? []);
-        // Update book's pageCount with epub.js locations count (more accurate than spine items)
-        if (msg.totalPages && bookId) {
-          updateBook(bookId, { pageCount: msg.totalPages });
-        }
         // Apply saved settings
         sendToWebView({ type: "setTheme", theme: readerSettings.theme });
         sendToWebView({ type: "setFontSize", size: readerSettings.fontSize });
@@ -229,6 +225,13 @@ export default function ReaderScreen() {
         // Restore existing highlights
         for (const q of existingQuotes) {
           if (q.cfi) sendToWebView({ type: "highlight", cfi: q.cfi, color: q.color });
+        }
+        break;
+
+      case "locationsReady":
+        // Update book's pageCount with epub.js locations count (more accurate than spine items)
+        if (msg.totalPages && bookId) {
+          updateBook(bookId, { pageCount: msg.totalPages });
         }
         break;
 
