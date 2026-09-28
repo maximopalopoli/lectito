@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
@@ -56,10 +57,13 @@ function formatTime(seconds: number): string {
 export default function ReaderScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
   // Stores
   const book = useBooksStore((s) => s.books.find((b) => b.id === bookId));
+  const booksHydrated = useBooksStore((s) => s._hydrated);
+  const sessionsHydrated = useSessionsStore((s) => s._hydrated);
   const updateBook = useBooksStore((s) => s.updateBook);
   const changeStatus = useBooksStore((s) => s.changeStatus);
   const addSession = useSessionsStore((s) => s.addSession);
@@ -132,15 +136,14 @@ export default function ReaderScreen() {
 
   // Auto-set status to READING if TBR (run once on mount)
   useEffect(() => {
-    if (book && book.status === "TBR") {
+    if (booksHydrated && book && book.status === "TBR") {
       changeStatus(book.id, "READING");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [booksHydrated, book, changeStatus]);
 
   // Save session on leaving
   const saveSession = useCallback(() => {
-    if (sessionSavedRef.current || !bookId) return;
+    if (sessionSavedRef.current || !bookId || !booksHydrated || !sessionsHydrated || !book) return;
     sessionSavedRef.current = true;
 
     const durationMin = Math.max(1, Math.round(elapsedRef.current / 60));
@@ -161,7 +164,7 @@ export default function ReaderScreen() {
       const currentPage = Math.round(finalPercentRef.current * book.pageCount);
       updateBook(bookId, { currentPage });
     }
-  }, [bookId, book, addSession, updateBook]);
+  }, [bookId, book, booksHydrated, sessionsHydrated, addSession, updateBook]);
 
   // Save on navigation away
   useEffect(() => {
@@ -171,7 +174,7 @@ export default function ReaderScreen() {
     return unsubscribe;
   }, [navigation, saveSession]);
 
-  // Load ePub (run once on mount)
+  // Load ePub when the stored book has finished hydrating.
   useEffect(() => {
     if (!book?.epubUri) return;
     Promise.all([
@@ -187,8 +190,7 @@ export default function ReaderScreen() {
         pendingLocationsRef.current = cachedLocations;
       }
     }).catch(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [book?.epubUri, bookId]);
 
   function sendToWebView(msg: Record<string, unknown>) {
     if (webViewRef.current) {
@@ -344,7 +346,7 @@ export default function ReaderScreen() {
       {/* Top toolbar — always takes space, content hidden via opacity */}
       <View
         style={{
-          paddingTop: 40,
+          paddingTop: insets.top + 8,
           paddingBottom: 10,
           paddingHorizontal: 16,
           flexDirection: "row",
@@ -436,7 +438,7 @@ export default function ReaderScreen() {
             top: 0,
             left: 0,
             right: 0,
-            paddingTop: 44,
+            paddingTop: insets.top + 12,
             paddingBottom: 8,
             paddingHorizontal: 16,
             backgroundColor: "#FBBF24",

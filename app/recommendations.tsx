@@ -1,10 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Text, View } from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
 import RecommendationCard from '@/components/RecommendationCard';
+import { useTheme } from '@/lib/theme';
 import { fetchSubjectsForBook, fetchBooksBySubject, searchBooksByAuthor } from '@/lib/openLibrary';
 import { useBooksStore } from '@/store/books';
 import { useRecommendationsStore } from '@/store/recommendations';
@@ -54,6 +56,8 @@ function buildRecs(
 
 export default function RecommendationsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const books = useBooksStore((s) => s.books);
   const { cache, setCache } = useRecommendationsStore();
 
@@ -229,11 +233,11 @@ export default function RecommendationsScreen() {
         : 'Recomendaciones';
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View
         style={{
-          paddingTop: 56,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
           paddingBottom: 16,
           flexDirection: 'row',
@@ -253,9 +257,9 @@ export default function RecommendationsScreen() {
           haptic="light"
           style={{ marginRight: 12 }}
         >
-          <Ionicons name="chevron-back" size={28} color="#007AFF" />
+          <Ionicons name="chevron-back" size={28} color={colors.primary} />
         </AnimatedPressable>
-        <Text style={{ fontSize: 22, fontWeight: 'bold', flex: 1 }}>{title}</Text>
+        <Text style={{ fontSize: 22, fontWeight: 'bold', flex: 1, color: colors.textPrimary }}>{title}</Text>
         {screenState === 'results' && (
           <AnimatedPressable
             onPress={() => {
@@ -264,7 +268,7 @@ export default function RecommendationsScreen() {
             }}
             haptic="light"
           >
-            <Ionicons name="refresh" size={22} color="#007AFF" />
+            <Ionicons name="refresh" size={22} color={colors.primary} />
           </AnimatedPressable>
         )}
       </View>
@@ -282,8 +286,8 @@ export default function RecommendationsScreen() {
                 gap: 12,
               }}
             >
-              <Ionicons name="book-outline" size={48} color="#ccc" />
-              <Text style={{ fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22 }}>
+              <Ionicons name="book-outline" size={48} color={colors.icon} />
+              <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 }}>
                 Necesitás al menos {MIN_SELECTION} libros leídos o en curso con ISBN.
               </Text>
             </View>
@@ -292,7 +296,7 @@ export default function RecommendationsScreen() {
               <Text
                 style={{
                   fontSize: 13,
-                  color: '#666',
+                  color: colors.textSecondary,
                   paddingHorizontal: 16,
                   marginBottom: 12,
                   lineHeight: 18,
@@ -313,12 +317,12 @@ export default function RecommendationsScreen() {
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: selected ? '#f0f7ff' : '#f5f5f5',
+                        backgroundColor: selected ? colors.surfaceTint : colors.surface,
                         borderRadius: 10,
                         padding: 10,
                         marginBottom: 8,
                         borderWidth: 1.5,
-                        borderColor: selected ? '#007AFF' : 'transparent',
+                        borderColor: selected ? colors.primary : 'transparent',
                       }}
                     >
                       {item.coverUrl ? (
@@ -333,26 +337,26 @@ export default function RecommendationsScreen() {
                             width: 40,
                             height: 58,
                             borderRadius: 4,
-                            backgroundColor: '#ddd',
+                            backgroundColor: colors.border,
                             justifyContent: 'center',
                             alignItems: 'center',
                           }}
                         >
-                          <Ionicons name="book" size={18} color="#999" />
+                          <Ionicons name="book" size={18} color={colors.textTertiary} />
                         </View>
                       )}
                       <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }} numberOfLines={1}>
                           {item.title}
                         </Text>
-                        <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
                           {item.authors.join(', ')}
                         </Text>
                       </View>
                       <Ionicons
                         name={selected ? 'checkmark-circle' : 'ellipse-outline'}
                         size={22}
-                        color={selected ? '#007AFF' : '#ccc'}
+                        color={selected ? colors.primary : colors.icon}
                         style={{ marginLeft: 8 }}
                       />
                     </AnimatedPressable>
@@ -366,16 +370,16 @@ export default function RecommendationsScreen() {
                   left: 0,
                   right: 0,
                   padding: 16,
-                  backgroundColor: '#fff',
+                  backgroundColor: colors.background,
                   borderTopWidth: 1,
-                  borderTopColor: '#f0f0f0',
+                  borderTopColor: colors.divider,
                 }}
               >
                 {selectedIds.size < MIN_SELECTION && (
                   <Text
                     style={{
                       fontSize: 13,
-                      color: '#FF9500',
+                      color: colors.warning,
                       textAlign: 'center',
                       marginBottom: 8,
                     }}
@@ -388,13 +392,13 @@ export default function RecommendationsScreen() {
                   haptic="medium"
                   disabled={selectedIds.size < MIN_SELECTION}
                   style={{
-                    backgroundColor: selectedIds.size < MIN_SELECTION ? '#ccc' : '#007AFF',
+                    backgroundColor: selectedIds.size < MIN_SELECTION ? colors.icon : colors.primary,
                     borderRadius: 12,
                     paddingVertical: 14,
                     alignItems: 'center',
                   }}
                 >
-                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                  <Text style={{ color: colors.onPrimary, fontSize: 16, fontWeight: '600' }}>
                     Buscar recomendaciones ({selectedIds.size})
                   </Text>
                 </AnimatedPressable>
@@ -407,8 +411,8 @@ export default function RecommendationsScreen() {
       {/* Loading */}
       {screenState === 'loading' && (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 }}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={{ fontSize: 15, color: '#666' }}>{loadingMessage}</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ fontSize: 15, color: colors.textSecondary }}>{loadingMessage}</Text>
         </View>
       )}
 
@@ -420,12 +424,12 @@ export default function RecommendationsScreen() {
           renderItem={({ item }) => <RecommendationCard recommendation={item} />}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
           ListHeaderComponent={
-            <Text style={{ fontSize: 13, color: '#999', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: colors.textTertiary, marginBottom: 12 }}>
               Basado en {selectedIds.size} libros seleccionados
             </Text>
           }
           ListEmptyComponent={
-            <Text style={{ color: '#999', textAlign: 'center', marginTop: 40 }}>
+            <Text style={{ color: colors.textTertiary, textAlign: 'center', marginTop: 40 }}>
               No hay recomendaciones disponibles.
             </Text>
           }
@@ -436,19 +440,19 @@ export default function RecommendationsScreen() {
                 haptic="light"
                 style={{
                   borderWidth: 1,
-                  borderColor: '#007AFF',
+                  borderColor: colors.primary,
                   borderRadius: 10,
                   paddingVertical: 12,
                   alignItems: 'center',
                   marginTop: 4,
                 }}
               >
-                <Text style={{ color: '#007AFF', fontSize: 15, fontWeight: '600' }}>
+                <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>
                   Cargar más
                 </Text>
               </AnimatedPressable>
             ) : (
-              <Text style={{ color: '#ccc', textAlign: 'center', fontSize: 13, marginTop: 12 }}>
+              <Text style={{ color: colors.textTertiary, textAlign: 'center', fontSize: 13, marginTop: 12 }}>
                 No hay más recomendaciones
               </Text>
             )
@@ -467,21 +471,21 @@ export default function RecommendationsScreen() {
             gap: 16,
           }}
         >
-          <Ionicons name="alert-circle-outline" size={48} color="#ccc" />
-          <Text style={{ fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22 }}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.icon} />
+          <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 }}>
             {errorMessage}
           </Text>
           <AnimatedPressable
             onPress={() => setScreenState('selection')}
             haptic="medium"
             style={{
-              backgroundColor: '#007AFF',
+              backgroundColor: colors.primary,
               borderRadius: 10,
               paddingVertical: 12,
               paddingHorizontal: 28,
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+            <Text style={{ color: colors.onPrimary, fontSize: 15, fontWeight: '600' }}>
               Cambiar selección
             </Text>
           </AnimatedPressable>

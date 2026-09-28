@@ -1,5 +1,7 @@
 import { Pressable, View, Text } from 'react-native';
 
+import { useTheme } from '@/lib/theme';
+
 interface StarRatingProps {
   rating: number | null;
   onRate?: (value: number) => void;
@@ -13,6 +15,7 @@ export default function StarRating({
   size = 28,
   readonly = false,
 }: StarRatingProps) {
+  const colors = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 4 }}>
       {[1, 2, 3, 4, 5].map((star) => {
@@ -29,7 +32,7 @@ export default function StarRating({
             <Text
               style={{
                 fontSize: size,
-                color: filled ? '#F59E0B' : '#D1D5DB',
+                color: filled ? '#F59E0B' : colors.icon,
               }}
             >
               {filled ? '★' : '☆'}

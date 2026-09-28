@@ -2,6 +2,7 @@ import { Image, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import AnimatedPressable from './AnimatedPressable';
+import { useTheme } from '@/lib/theme';
 import { useBooksStore } from '@/store/books';
 import type { Recommendation } from '@/types';
 
@@ -12,6 +13,7 @@ interface RecommendationCardProps {
 export default function RecommendationCard({ recommendation }: RecommendationCardProps) {
   const books = useBooksStore((s) => s.books);
   const addBook = useBooksStore((s) => s.addBook);
+  const colors = useTheme();
 
   const alreadyInLibrary = books.some(
     (b) =>
@@ -35,7 +37,7 @@ export default function RecommendationCard({ recommendation }: RecommendationCar
   return (
     <View
       style={{
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.surface,
         borderRadius: 12,
         padding: 14,
         marginBottom: 12,
@@ -54,25 +56,25 @@ export default function RecommendationCard({ recommendation }: RecommendationCar
               width: 56,
               height: 84,
               borderRadius: 6,
-              backgroundColor: '#ddd',
+              backgroundColor: colors.border,
               justifyContent: 'center',
               alignItems: 'center',
             }}
           >
-            <Ionicons name="book" size={24} color="#999" />
+            <Ionicons name="book" size={24} color={colors.textTertiary} />
           </View>
         )}
 
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600' }} numberOfLines={2}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }} numberOfLines={2}>
             {recommendation.title}
           </Text>
-          <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }} numberOfLines={1}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
             {recommendation.authors.join(', ')}
           </Text>
 
           {recommendation.reason ? (
-            <Text style={{ fontSize: 13, color: '#555', marginTop: 6, lineHeight: 18 }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 6, lineHeight: 18 }}>
               {recommendation.reason}
             </Text>
           ) : null}
@@ -85,7 +87,7 @@ export default function RecommendationCard({ recommendation }: RecommendationCar
         disabled={alreadyInLibrary}
         style={{
           marginTop: 12,
-          backgroundColor: alreadyInLibrary ? '#e0e0e0' : '#007AFF',
+          backgroundColor: alreadyInLibrary ? colors.borderLight : colors.primary,
           borderRadius: 8,
           paddingVertical: 10,
           alignItems: 'center',
@@ -93,7 +95,7 @@ export default function RecommendationCard({ recommendation }: RecommendationCar
       >
         <Text
           style={{
-            color: alreadyInLibrary ? '#999' : '#fff',
+            color: alreadyInLibrary ? colors.textTertiary : colors.onPrimary,
             fontSize: 14,
             fontWeight: '600',
           }}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -21,12 +22,15 @@ import {
   getStreak,
   getWeeklyStats,
 } from "@/lib/stats";
+import { spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useGoalsStore } from "@/store/goals";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function StatsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
   const goal = useGoalsStore((s) => s.goal);
@@ -57,7 +61,7 @@ export default function StatsScreen() {
       <View
         style={{
           flex: 1,
-          backgroundColor: "#fff",
+          backgroundColor: colors.background,
           justifyContent: "center",
           alignItems: "center",
           paddingHorizontal: 32,
@@ -66,13 +70,13 @@ export default function StatsScreen() {
         <Ionicons
           name="stats-chart-outline"
           size={56}
-          color="#ccc"
+          color={colors.icon}
           style={{ marginBottom: 16 }}
         />
-        <Text style={{ fontSize: 18, fontWeight: "600", color: "#666", marginBottom: 6 }}>
+        <Text style={{ fontSize: 18, fontWeight: "600", color: colors.textSecondary, marginBottom: 6 }}>
           Sin datos todavía
         </Text>
-        <Text style={{ fontSize: 14, color: "#999", textAlign: "center" }}>
+        <Text style={{ fontSize: 14, color: colors.textTertiary, textAlign: "center" }}>
           Completá tu primera sesión de lectura para ver tus estadísticas acá.
         </Text>
       </View>
@@ -81,14 +85,14 @@ export default function StatsScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
-        paddingTop: 56,
+        paddingTop: insets.top + spacing.xl,
         paddingHorizontal: 16,
         paddingBottom: 40,
       }}
     >
-      <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 24 }}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: colors.textPrimary, marginBottom: 24 }}>
         Estadísticas
       </Text>
 
@@ -115,32 +119,32 @@ export default function StatsScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "#f5f5f5",
+            backgroundColor: colors.surface,
             borderRadius: 12,
             padding: 16,
             alignItems: "center",
           }}
         >
-          <Text style={{ fontSize: 32, fontWeight: "bold", color: "#FF9500" }}>
+          <Text style={{ fontSize: 32, fontWeight: "bold", color: colors.warning }}>
             {streak}
           </Text>
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
             racha actual
           </Text>
         </View>
         <View
           style={{
             flex: 1,
-            backgroundColor: "#f5f5f5",
+            backgroundColor: colors.surface,
             borderRadius: 12,
             padding: 16,
             alignItems: "center",
           }}
         >
-          <Text style={{ fontSize: 32, fontWeight: "bold", color: "#FF9500" }}>
+          <Text style={{ fontSize: 32, fontWeight: "bold", color: colors.warning }}>
             {bestStreak}
           </Text>
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
             mejor racha
           </Text>
         </View>
@@ -154,7 +158,7 @@ export default function StatsScreen() {
       <SectionTitle>Minutos por día (últimos 7 días)</SectionTitle>
       <View
         style={{
-          backgroundColor: "#f5f5f5",
+          backgroundColor: colors.surface,
           borderRadius: 12,
           padding: 16,
         }}
@@ -183,7 +187,7 @@ export default function StatsScreen() {
       <SectionTitle>Libros terminados</SectionTitle>
       <View
         style={{
-          backgroundColor: "#f5f5f5",
+          backgroundColor: colors.surface,
           borderRadius: 12,
           padding: 16,
         }}
@@ -213,14 +217,14 @@ export default function StatsScreen() {
         onPress={() => router.push("/share-stats")}
         haptic="medium"
         style={{
-          backgroundColor: "#8B5CF6",
+          backgroundColor: colors.accent,
           borderRadius: 12,
           paddingVertical: 14,
           alignItems: "center",
           marginTop: 32,
         }}
       >
-        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+        <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>
           Compartir mi resumen
         </Text>
       </AnimatedPressable>
@@ -238,8 +242,8 @@ export default function StatsScreen() {
           paddingVertical: 12,
         }}
       >
-        <Ionicons name="cloud-download-outline" size={18} color="#999" />
-        <Text style={{ fontSize: 14, color: "#999" }}>Backup</Text>
+        <Ionicons name="cloud-download-outline" size={18} color={colors.textTertiary} />
+        <Text style={{ fontSize: 14, color: colors.textTertiary }}>Backup</Text>
       </AnimatedPressable>
     </ScrollView>
   );
@@ -256,6 +260,7 @@ function MonthlyBookBar({
   maxCount: number;
   index: number;
 }) {
+  const colors = useTheme();
   const targetHeight = Math.max(
     (count / maxCount) * 90,
     count > 0 ? 4 : 0,
@@ -275,21 +280,21 @@ function MonthlyBookBar({
 
   return (
     <View style={{ alignItems: "center", flex: 1 }}>
-      <Text style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
+      <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>
         {count > 0 ? count : ""}
       </Text>
       <Animated.View
         style={[
           {
             width: 24,
-            backgroundColor: count > 0 ? "#34C759" : "#ddd",
+            backgroundColor: count > 0 ? colors.success : colors.track,
             borderRadius: 4,
             minHeight: 4,
           },
           animatedStyle,
         ]}
       />
-      <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+      <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
         {label}
       </Text>
     </View>
@@ -307,6 +312,7 @@ function AnimatedBar({
   maxMinutes: number;
   index: number;
 }) {
+  const colors = useTheme();
   const targetHeight = Math.max(
     (minutes / maxMinutes) * 90,
     minutes > 0 ? 4 : 0,
@@ -326,21 +332,21 @@ function AnimatedBar({
 
   return (
     <View style={{ alignItems: "center", flex: 1 }}>
-      <Text style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
+      <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>
         {minutes > 0 ? minutes : ""}
       </Text>
       <Animated.View
         style={[
           {
             width: 24,
-            backgroundColor: minutes > 0 ? "#007AFF" : "#ddd",
+            backgroundColor: minutes > 0 ? colors.primary : colors.track,
             borderRadius: 4,
             minHeight: 4,
           },
           animatedStyle,
         ]}
       />
-      <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+      <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
         {label}
       </Text>
     </View>
@@ -348,12 +354,13 @@ function AnimatedBar({
 }
 
 function SectionTitle({ children }: { children: string }) {
+  const colors = useTheme();
   return (
     <Text
       style={{
         fontSize: 15,
         fontWeight: "600",
-        color: "#666",
+        color: colors.textSecondary,
         marginTop: 24,
         marginBottom: 12,
       }}
@@ -364,20 +371,21 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 function StatCard({ label, value }: { label: string; value: number }) {
+  const colors = useTheme();
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: colors.surface,
         borderRadius: 12,
         padding: 16,
         alignItems: "center",
       }}
     >
-      <Text style={{ fontSize: 32, fontWeight: "bold", color: "#007AFF" }}>
+      <Text style={{ fontSize: 32, fontWeight: "bold", color: colors.primary }}>
         {value}
       </Text>
-      <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
+      <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
         {label}
       </Text>
     </View>
@@ -393,6 +401,7 @@ function GoalSection({
   goal: import("@/types").Goal | null;
   router: ReturnType<typeof useRouter>;
 }) {
+  const colors = useTheme();
   const metricLabel = goal?.metric === "pages" ? "pág" : "min";
   const periodLabel = goal?.period === "weekly" ? "esta semana" : "hoy";
 
@@ -407,7 +416,7 @@ function GoalSection({
       {goal && progress ? (
         <View
           style={{
-            backgroundColor: "#f5f5f5",
+            backgroundColor: colors.surface,
             borderRadius: 12,
             padding: 16,
           }}
@@ -420,14 +429,14 @@ function GoalSection({
               marginBottom: 12,
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "600" }}>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary }}>
               {progress.current}/{progress.target} {metricLabel} {periodLabel}
             </Text>
             <Text
               style={{
                 fontSize: 15,
                 fontWeight: "bold",
-                color: progress.percentage >= 100 ? "#34C759" : "#007AFF",
+                color: progress.percentage >= 100 ? colors.success : colors.primary,
               }}
             >
               {progress.percentage}%
@@ -438,7 +447,7 @@ function GoalSection({
           <View
             style={{
               height: 8,
-              backgroundColor: "#ddd",
+              backgroundColor: colors.track,
               borderRadius: 4,
               marginBottom: 12,
             }}
@@ -447,7 +456,7 @@ function GoalSection({
               style={{
                 height: 8,
                 backgroundColor:
-                  progress.percentage >= 100 ? "#34C759" : "#007AFF",
+                  progress.percentage >= 100 ? colors.success : colors.primary,
                 borderRadius: 4,
                 width: `${progress.percentage}%`,
               }}
@@ -460,7 +469,7 @@ function GoalSection({
             scaleDown={0.97}
             style={{ alignItems: "center", paddingTop: 4 }}
           >
-            <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "500" }}>
+            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "500" }}>
               Cambiar objetivo
             </Text>
           </AnimatedPressable>
@@ -470,7 +479,7 @@ function GoalSection({
           onPress={() => router.push("/goals/configure")}
           haptic="light"
           style={{
-            backgroundColor: "#f5f5f5",
+            backgroundColor: colors.surface,
             borderRadius: 12,
             padding: 20,
             alignItems: "center",
@@ -479,13 +488,13 @@ function GoalSection({
           <Ionicons
             name="flag-outline"
             size={28}
-            color="#999"
+            color={colors.textTertiary}
             style={{ marginBottom: 8 }}
           />
-          <Text style={{ fontSize: 15, color: "#666", fontWeight: "500" }}>
+          <Text style={{ fontSize: 15, color: colors.textSecondary, fontWeight: "500" }}>
             Configurar objetivo
           </Text>
-          <Text style={{ fontSize: 13, color: "#999", marginTop: 4 }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 4 }}>
             Definí una meta diaria o semanal
           </Text>
         </AnimatedPressable>

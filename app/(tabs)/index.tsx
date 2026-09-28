@@ -1,16 +1,20 @@
 import { useMemo } from "react";
 import { Image, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
 import { getGoalProgress, getStreak, getTodayStats } from "@/lib/stats";
+import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useGoalsStore } from "@/store/goals";
 import { useSessionsStore } from "@/store/sessions";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
   const goal = useGoalsStore((s) => s.goal);
@@ -26,120 +30,80 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
-        paddingTop: 56,
-        paddingHorizontal: 16,
+        paddingTop: insets.top + spacing.xl,
+        paddingHorizontal: spacing.lg,
         paddingBottom: 40,
       }}
     >
       {/* Header */}
-      <Text style={{ fontSize: 28, fontWeight: "bold", marginBottom: 24 }}>
+      <Text
+        style={{
+          fontSize: fontSize.display,
+          fontWeight: fontWeight.bold,
+          color: colors.textPrimary,
+          marginBottom: spacing.xl,
+        }}
+      >
         Hola!
       </Text>
 
       {/* Today summary */}
       <Text
         style={{
-          fontSize: 15,
-          fontWeight: "600",
-          color: "#666",
-          marginBottom: 12,
+          fontSize: fontSize.base,
+          fontWeight: fontWeight.semibold,
+          color: colors.textSecondary,
+          marginBottom: spacing.md,
         }}
       >
         Resumen de hoy
       </Text>
-      <View style={{ flexDirection: "row", gap: 12, marginBottom: 24 }}>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "#f5f5f5",
-            borderRadius: 12,
-            padding: 16,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 32, fontWeight: "bold", color: "#007AFF" }}>
-            {todayStats.minutes}
-          </Text>
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
-            minutos
-          </Text>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "#f5f5f5",
-            borderRadius: 12,
-            padding: 16,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 32, fontWeight: "bold", color: "#007AFF" }}>
-            {todayStats.pages}
-          </Text>
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
-            páginas
-          </Text>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "#f5f5f5",
-            borderRadius: 12,
-            padding: 16,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 32, fontWeight: "bold", color: "#FF9500" }}>
-            {streak}
-          </Text>
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
-            racha
-          </Text>
-        </View>
+      <View style={{ flexDirection: "row", gap: spacing.md, marginBottom: spacing.xl }}>
+        <SummaryCard value={todayStats.minutes} label="minutos" color={colors.primary} />
+        <SummaryCard value={todayStats.pages} label="páginas" color={colors.primary} />
+        <SummaryCard value={streak} label="racha" color={colors.warning} />
       </View>
 
       {/* Goal progress */}
       {goal && goalProgress && (
         <View
           style={{
-            backgroundColor: "#f5f5f5",
-            borderRadius: 12,
+            backgroundColor: colors.surface,
+            borderRadius: radius.xl,
             padding: 14,
-            marginBottom: 24,
+            marginBottom: spacing.xl,
           }}
         >
           <View
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
-              marginBottom: 8,
+              marginBottom: spacing.sm,
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>
+            <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textSecondary }}>
               {goalProgress.current}/{goalProgress.target}{" "}
               {goal.metric === "minutes" ? "min" : "pág"}{" "}
               {goal.period === "daily" ? "hoy" : "esta semana"}
             </Text>
             <Text
               style={{
-                fontSize: 14,
-                fontWeight: "bold",
-                color: goalProgress.percentage >= 100 ? "#34C759" : "#007AFF",
+                fontSize: fontSize.md,
+                fontWeight: fontWeight.bold,
+                color: goalProgress.percentage >= 100 ? colors.success : colors.primary,
               }}
             >
               {goalProgress.percentage}%
             </Text>
           </View>
-          <View
-            style={{ height: 6, backgroundColor: "#ddd", borderRadius: 3 }}
-          >
+          <View style={{ height: 6, backgroundColor: colors.track, borderRadius: 3 }}>
             <View
               style={{
                 height: 6,
                 backgroundColor:
-                  goalProgress.percentage >= 100 ? "#34C759" : "#007AFF",
+                  goalProgress.percentage >= 100 ? colors.success : colors.primary,
                 borderRadius: 3,
                 width: `${goalProgress.percentage}%`,
               }}
@@ -153,10 +117,10 @@ export default function HomeScreen() {
         <>
           <Text
             style={{
-              fontSize: 15,
-              fontWeight: "600",
-              color: "#666",
-              marginBottom: 12,
+              fontSize: fontSize.base,
+              fontWeight: fontWeight.semibold,
+              color: colors.textSecondary,
+              marginBottom: spacing.md,
             }}
           >
             Continuar leyendo
@@ -167,13 +131,13 @@ export default function HomeScreen() {
                 ? Math.round((book.currentPage / book.pageCount) * 100)
                 : 0;
             return (
-              <View key={book.id} style={{ marginBottom: 12 }}>
+              <View key={book.id} style={{ marginBottom: spacing.md }}>
                 <AnimatedPressable
                   onPress={() => router.push(`/book/${book.id}`)}
                   haptic="light"
                   style={{
-                    backgroundColor: "#f5f5f5",
-                    borderRadius: 12,
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.xl,
                     padding: 14,
                     flexDirection: "row",
                     alignItems: "center",
@@ -191,29 +155,29 @@ export default function HomeScreen() {
                         width: 50,
                         height: 74,
                         borderRadius: 6,
-                        backgroundColor: "#ddd",
+                        backgroundColor: colors.border,
                         justifyContent: "center",
                         alignItems: "center",
                       }}
                     >
-                      <Ionicons name="book" size={24} color="#999" />
+                      <Ionicons name="book" size={24} color={colors.textTertiary} />
                     </View>
                   )}
                   <View
                     style={{
                       flex: 1,
-                      marginLeft: 12,
+                      marginLeft: spacing.md,
                       justifyContent: "center",
                     }}
                   >
                     <Text
-                      style={{ fontSize: 16, fontWeight: "600" }}
+                      style={{ fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.textPrimary }}
                       numberOfLines={1}
                     >
                       {book.title}
                     </Text>
                     <Text
-                      style={{ fontSize: 13, color: "#666", marginTop: 2 }}
+                      style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 }}
                       numberOfLines={1}
                     >
                       {book.authors.join(", ")}
@@ -223,15 +187,15 @@ export default function HomeScreen() {
                         <View
                           style={{
                             height: 4,
-                            backgroundColor: "#ddd",
+                            backgroundColor: colors.track,
                             borderRadius: 2,
-                            marginTop: 8,
+                            marginTop: spacing.sm,
                           }}
                         >
                           <View
                             style={{
                               height: 4,
-                              backgroundColor: "#007AFF",
+                              backgroundColor: colors.primary,
                               borderRadius: 2,
                               width: `${progress}%`,
                             }}
@@ -239,8 +203,8 @@ export default function HomeScreen() {
                         </View>
                         <Text
                           style={{
-                            fontSize: 11,
-                            color: "#999",
+                            fontSize: fontSize.xs,
+                            color: colors.textTertiary,
                             marginTop: 3,
                           }}
                         >
@@ -254,16 +218,16 @@ export default function HomeScreen() {
                     haptic="medium"
                     scaleDown={0.9}
                     style={{
-                      backgroundColor: "#007AFF",
-                      borderRadius: 10,
+                      backgroundColor: colors.primary,
+                      borderRadius: radius.lg,
                       width: 44,
                       height: 44,
                       justifyContent: "center",
                       alignItems: "center",
-                      marginLeft: 8,
+                      marginLeft: spacing.sm,
                     }}
                   >
-                    <Ionicons name="play" size={22} color="#fff" />
+                    <Ionicons name="play" size={22} color={colors.onPrimary} />
                   </AnimatedPressable>
                 </AnimatedPressable>
               </View>
@@ -273,35 +237,35 @@ export default function HomeScreen() {
       ) : (
         <View
           style={{
-            backgroundColor: "#f5f5f5",
-            borderRadius: 12,
-            padding: 24,
+            backgroundColor: colors.surface,
+            borderRadius: radius.xl,
+            padding: spacing.xl,
             alignItems: "center",
-            marginTop: 8,
+            marginTop: spacing.sm,
           }}
         >
           <Ionicons
             name="book-outline"
             size={48}
-            color="#ccc"
-            style={{ marginBottom: 12 }}
+            color={colors.icon}
+            style={{ marginBottom: spacing.md }}
           />
           <Text
             style={{
-              fontSize: 16,
-              fontWeight: "600",
-              color: "#666",
-              marginBottom: 4,
+              fontSize: fontSize.lg,
+              fontWeight: fontWeight.semibold,
+              color: colors.textSecondary,
+              marginBottom: spacing.xs,
             }}
           >
             No estás leyendo nada
           </Text>
           <Text
             style={{
-              fontSize: 14,
-              color: "#999",
+              fontSize: fontSize.md,
+              color: colors.textTertiary,
               textAlign: "center",
-              marginBottom: 16,
+              marginBottom: spacing.lg,
             }}
           >
             {"Marcá un libro como \"Leyendo\" para empezar a registrar sesiones."}
@@ -310,18 +274,48 @@ export default function HomeScreen() {
             onPress={() => router.push("/book/add")}
             haptic="medium"
             style={{
-              backgroundColor: "#007AFF",
-              borderRadius: 10,
-              paddingVertical: 12,
-              paddingHorizontal: 24,
+              backgroundColor: colors.primary,
+              borderRadius: radius.lg,
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.xl,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+            <Text style={{ color: colors.onPrimary, fontSize: fontSize.base, fontWeight: fontWeight.semibold }}>
               Agregar libro
             </Text>
           </AnimatedPressable>
         </View>
       )}
     </ScrollView>
+  );
+}
+
+function SummaryCard({
+  value,
+  label,
+  color,
+}: {
+  value: number;
+  label: string;
+  color: string;
+}) {
+  const colors = useTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.surface,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        alignItems: "center",
+      }}
+    >
+      <Text style={{ fontSize: fontSize.hero, fontWeight: fontWeight.bold, color }}>
+        {value}
+      </Text>
+      <Text style={{ fontSize: fontSize.md, color: colors.textSecondary, marginTop: spacing.xs }}>
+        {label}
+      </Text>
+    </View>
   );
 }

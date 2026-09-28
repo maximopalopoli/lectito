@@ -81,8 +81,12 @@ export function getBestStreak(sessions: Session[]): number {
   let current = 1;
 
   for (let i = 1; i < sessionDates.length; i++) {
-    // Walk from previous date forward one day and compare keys
-    const prev = new Date(sessionDates[i - 1]);
+    // Walk from previous date forward one day and compare keys.
+    // Parse the YYYY-MM-DD key into a *local* date (new Date("YYYY-MM-DD")
+    // would parse as UTC and drift the day in negative-offset timezones,
+    // breaking the comparison against toDateKey's local keys).
+    const [y, m, d] = sessionDates[i - 1].split('-').map(Number);
+    const prev = new Date(y, m - 1, d);
     prev.setDate(prev.getDate() + 1);
     if (toDateKey(prev) === sessionDates[i]) {
       current++;

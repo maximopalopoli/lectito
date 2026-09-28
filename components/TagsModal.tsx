@@ -10,6 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 
+import { useTheme } from '@/lib/theme';
 import { useBooksStore } from '@/store/books';
 import TagBadge from './TagBadge';
 
@@ -31,6 +32,7 @@ export default function TagsModal({
   const [tags, setTags] = useState<string[]>(bookTags);
   const [input, setInput] = useState('');
   const books = useBooksStore((s) => s.books);
+  const colors = useTheme();
 
   const suggestions = useMemo(() => {
     const all = new Set<string>();
@@ -82,7 +84,7 @@ export default function TagsModal({
         >
           <View
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: colors.card,
               borderRadius: 16,
               padding: 24,
               width: '100%',
@@ -94,6 +96,7 @@ export default function TagsModal({
               style={{
                 fontSize: 20,
                 fontWeight: 'bold',
+                color: colors.textPrimary,
                 textAlign: 'center',
                 marginBottom: 20,
               }}
@@ -132,28 +135,30 @@ export default function TagsModal({
                 value={input}
                 onChangeText={setInput}
                 placeholder="Nueva etiqueta..."
+                placeholderTextColor={colors.textTertiary}
                 autoCapitalize="none"
                 returnKeyType="done"
                 onSubmitEditing={() => input.trim() && addTag(input)}
                 style={{
                   flex: 1,
                   borderWidth: 1,
-                  borderColor: '#ddd',
+                  borderColor: colors.border,
                   borderRadius: 10,
                   padding: 10,
                   fontSize: 15,
+                  color: colors.textPrimary,
                 }}
               />
               <Pressable
                 onPress={() => input.trim() && addTag(input)}
                 style={{
-                  backgroundColor: '#007AFF',
+                  backgroundColor: colors.primary,
                   paddingHorizontal: 16,
                   borderRadius: 10,
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
+                <Text style={{ color: colors.onPrimary, fontWeight: '600', fontSize: 15 }}>
                   +
                 </Text>
               </Pressable>
@@ -165,7 +170,7 @@ export default function TagsModal({
                 <Text
                   style={{
                     fontSize: 12,
-                    color: '#999',
+                    color: colors.textTertiary,
                     textTransform: 'uppercase',
                     marginBottom: 8,
                   }}
@@ -192,7 +197,7 @@ export default function TagsModal({
             <Pressable
               onPress={handleSave}
               style={{
-                backgroundColor: '#007AFF',
+                backgroundColor: colors.primary,
                 paddingVertical: 14,
                 borderRadius: 10,
                 alignItems: 'center',
@@ -200,7 +205,7 @@ export default function TagsModal({
               }}
             >
               <Text
-                style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}
+                style={{ color: colors.onPrimary, fontWeight: '600', fontSize: 16 }}
               >
                 Guardar
               </Text>
@@ -213,7 +218,7 @@ export default function TagsModal({
                 alignItems: 'center',
               }}
             >
-              <Text style={{ color: '#888', fontSize: 15 }}>Cancelar</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 15 }}>Cancelar</Text>
             </Pressable>
           </View>
         </View>

@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
+import { useTheme } from '@/lib/theme';
 import { useBooksStore } from '@/store/books';
 import { useQuotesStore } from '@/store/quotes';
 import type { QuoteColor } from '@/types';
@@ -18,6 +20,8 @@ const COLOR_HEX: Record<QuoteColor, string> = {
 export default function QuotesListScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
 
   const books = useBooksStore((s) => s.books);
   const allQuotes = useQuotesStore((s) => s.quotes);
@@ -41,7 +45,7 @@ export default function QuotesListScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
@@ -50,15 +54,15 @@ export default function QuotesListScreen() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingTop: 56,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
           paddingBottom: 12,
         }}
       >
         <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: '#007AFF', fontSize: 16 }}>← Volver</Text>
+          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
         </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '600' }}>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary }}>
           Citas{book ? ` — ${book.title}` : ''}
         </Text>
         <Pressable
@@ -67,7 +71,7 @@ export default function QuotesListScreen() {
           }
           style={{ padding: 4 }}
         >
-          <Text style={{ color: '#007AFF', fontSize: 22, fontWeight: '600' }}>+</Text>
+          <Text style={{ color: colors.primary, fontSize: 22, fontWeight: '600' }}>+</Text>
         </Pressable>
       </View>
 
@@ -75,7 +79,7 @@ export default function QuotesListScreen() {
         {quotes.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>{"\u201C\u201D"}</Text>
-            <Text style={{ color: '#888', fontSize: 15, textAlign: 'center' }}>
+            <Text style={{ color: colors.textMuted, fontSize: 15, textAlign: 'center' }}>
               Aun no hay citas para este libro.{'\n'}Agrega tu primera cita.
             </Text>
           </View>
@@ -84,7 +88,7 @@ export default function QuotesListScreen() {
             <View
               key={quote.id}
               style={{
-                backgroundColor: '#f5f5f5',
+                backgroundColor: colors.surface,
                 borderRadius: 10,
                 padding: 14,
                 marginBottom: 10,
@@ -92,16 +96,16 @@ export default function QuotesListScreen() {
                 borderLeftColor: COLOR_HEX[quote.color],
               }}
             >
-              <Text style={{ fontSize: 15, fontStyle: 'italic', lineHeight: 22 }}>
+              <Text style={{ fontSize: 15, fontStyle: 'italic', lineHeight: 22, color: colors.textPrimary }}>
                 &ldquo;{quote.text}&rdquo;
               </Text>
               {quote.pageNumber != null && (
-                <Text style={{ fontSize: 12, color: '#999', marginTop: 6 }}>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 6 }}>
                   Pag. {quote.pageNumber}
                 </Text>
               )}
               {quote.note && (
-                <Text style={{ fontSize: 13, color: '#666', marginTop: 6 }}>
+                <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 6 }}>
                   {quote.note}
                 </Text>
               )}
@@ -113,7 +117,7 @@ export default function QuotesListScreen() {
                   marginTop: 10,
                 }}
               >
-                <Text style={{ fontSize: 11, color: '#bbb' }}>
+                <Text style={{ fontSize: 11, color: colors.textTertiary }}>
                   {new Date(quote.createdAt).toLocaleDateString()}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -126,13 +130,13 @@ export default function QuotesListScreen() {
                     }
                     haptic="light"
                   >
-                    <Text style={{ color: '#007AFF', fontSize: 13 }}>Editar</Text>
+                    <Text style={{ color: colors.primary, fontSize: 13 }}>Editar</Text>
                   </AnimatedPressable>
                   <AnimatedPressable
                     onPress={() => handleDelete(quote.id)}
                     haptic="medium"
                   >
-                    <Text style={{ color: '#FF3B30', fontSize: 13 }}>Eliminar</Text>
+                    <Text style={{ color: colors.danger, fontSize: 13 }}>Eliminar</Text>
                   </AnimatedPressable>
                 </View>
               </View>

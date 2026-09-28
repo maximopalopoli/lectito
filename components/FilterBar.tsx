@@ -2,6 +2,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
+import { useTheme } from "@/lib/theme";
+
 interface FilterBarProps {
   availableTags: string[];
   selectedTags: string[];
@@ -19,13 +21,14 @@ export default function FilterBar({
   onChangeRating,
   onClear,
 }: FilterBarProps) {
+  const colors = useTheme();
   const hasActiveFilters = selectedTags.length > 0 || minRating != null;
 
   return (
     <View style={{ gap: 10 }}>
       {/* Rating filter */}
       <View>
-        <Text style={{ fontSize: 12, color: "#888", marginBottom: 6, fontWeight: "600" }}>
+        <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 6, fontWeight: "600" }}>
           Rating mínimo
         </Text>
         <View style={{ flexDirection: "row", gap: 4 }}>
@@ -41,12 +44,12 @@ export default function FilterBar({
               <Ionicons
                 name={minRating != null && star <= minRating ? "star" : "star-outline"}
                 size={24}
-                color={minRating != null && star <= minRating ? "#FFB800" : "#ccc"}
+                color={minRating != null && star <= minRating ? "#FFB800" : colors.icon}
               />
             </Pressable>
           ))}
           {minRating != null && (
-            <Text style={{ fontSize: 13, color: "#666", marginLeft: 6, alignSelf: "center" }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginLeft: 6, alignSelf: "center" }}>
               {minRating}+ estrellas
             </Text>
           )}
@@ -56,7 +59,7 @@ export default function FilterBar({
       {/* Tags filter */}
       {availableTags.length > 0 && (
         <View>
-          <Text style={{ fontSize: 12, color: "#888", marginBottom: 6, fontWeight: "600" }}>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 6, fontWeight: "600" }}>
             Tags
           </Text>
           <ScrollView
@@ -74,7 +77,7 @@ export default function FilterBar({
                     onToggleTag(tag);
                   }}
                   style={{
-                    backgroundColor: isSelected ? "#1A73E8" : "#E8F0FE",
+                    backgroundColor: isSelected ? colors.tagText : colors.tagBg,
                     borderRadius: 12,
                     paddingHorizontal: 12,
                     paddingVertical: 6,
@@ -83,7 +86,7 @@ export default function FilterBar({
                   <Text
                     style={{
                       fontSize: 13,
-                      color: isSelected ? "#fff" : "#1A73E8",
+                      color: isSelected ? colors.onPrimary : colors.tagText,
                       fontWeight: isSelected ? "600" : "400",
                     }}
                   >
@@ -105,8 +108,8 @@ export default function FilterBar({
           }}
           style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-start" }}
         >
-          <Ionicons name="close-circle-outline" size={16} color="#FF3B30" />
-          <Text style={{ fontSize: 13, color: "#FF3B30", marginLeft: 4 }}>
+          <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+          <Text style={{ fontSize: 13, color: colors.danger, marginLeft: 4 }}>
             Limpiar filtros
           </Text>
         </Pressable>

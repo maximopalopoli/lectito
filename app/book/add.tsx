@@ -9,13 +9,16 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { randomUUID } from "expo-crypto";
 
 import * as DocumentPicker from "expo-document-picker";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
 import BarcodeScanner from "@/components/BarcodeScanner";
+import { useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
 import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
@@ -37,6 +40,8 @@ function looksLikeISBN(query: string): boolean {
 
 export default function AddBookScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const addBook = useBooksStore((s) => s.addBook);
 
   const [query, setQuery] = useState("");
@@ -124,8 +129,7 @@ export default function AddBookScreen() {
       const book = await parseEpub(asset.uri);
 
       // Persist ePub to permanent storage
-      const safeName = book.title.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
-      const permanentUri = await persistEpub(asset.uri, safeName);
+      const permanentUri = await persistEpub(asset.uri, randomUUID());
       setEpubUri(permanentUri);
 
       setResults([book]);
@@ -158,7 +162,7 @@ export default function AddBookScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
     >
@@ -167,18 +171,18 @@ export default function AddBookScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingTop: 56,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
           paddingBottom: 12,
         }}
       >
         <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
         </Pressable>
       </View>
 
       <View style={{ paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 16 }}>
+        <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.textPrimary, marginBottom: 16 }}>
           Agregar libro
         </Text>
 
@@ -188,22 +192,24 @@ export default function AddBookScreen() {
             value={query}
             onChangeText={setQuery}
             placeholder="ISBN o título del libro"
+            placeholderTextColor={colors.textTertiary}
             returnKeyType="search"
             onSubmitEditing={() => handleSearch()}
             style={{
               flex: 1,
               borderWidth: 1,
-              borderColor: "#ddd",
+              borderColor: colors.border,
               borderRadius: 8,
               padding: 10,
               fontSize: 15,
+              color: colors.textPrimary,
             }}
           />
           {Platform.OS !== "web" && (
             <Pressable
               onPress={() => setShowScanner(true)}
               style={{
-                backgroundColor: "#f0f0f0",
+                backgroundColor: colors.surface,
                 paddingHorizontal: 12,
                 paddingVertical: 10,
                 borderRadius: 8,
@@ -217,14 +223,14 @@ export default function AddBookScreen() {
             onPress={() => handleSearch()}
             disabled={loading || !query.trim()}
             style={{
-              backgroundColor: loading || !query.trim() ? "#a0c4ff" : "#007AFF",
+              backgroundColor: loading || !query.trim() ? "#a0c4ff" : colors.primary,
               paddingHorizontal: 16,
               paddingVertical: 10,
               borderRadius: 8,
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "600" }}>Buscar</Text>
+            <Text style={{ color: colors.onPrimary, fontWeight: "600" }}>Buscar</Text>
           </Pressable>
         </View>
 
@@ -240,14 +246,14 @@ export default function AddBookScreen() {
             paddingVertical: 10,
             paddingHorizontal: 16,
             borderWidth: 1,
-            borderColor: "#ddd",
+            borderColor: colors.border,
             borderRadius: 8,
             marginBottom: 16,
             opacity: loading ? 0.5 : 1,
           }}
         >
           <Text style={{ fontSize: 16 }}>📄</Text>
-          <Text style={{ fontSize: 14, color: "#333", fontWeight: "500" }}>
+          <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: "500" }}>
             Importar desde ePub
           </Text>
         </Pressable>
@@ -256,7 +262,7 @@ export default function AddBookScreen() {
         {loading && (
           <ActivityIndicator
             size="large"
-            color="#007AFF"
+            color={colors.primary}
             style={{ marginTop: 32 }}
           />
         )}
@@ -264,11 +270,11 @@ export default function AddBookScreen() {
         {/* Error */}
         {error && (
           <View style={{ alignItems: "center", marginTop: 24 }}>
-            <Text style={{ color: "#FF3B30", fontSize: 15, textAlign: "center" }}>
+            <Text style={{ color: colors.danger, fontSize: 15, textAlign: "center" }}>
               {error}
             </Text>
             <Pressable onPress={() => handleSearch()} style={{ marginTop: 12 }}>
-              <Text style={{ color: "#007AFF", fontSize: 15 }}>Reintentar</Text>
+              <Text style={{ color: colors.primary, fontSize: 15 }}>Reintentar</Text>
             </Pressable>
           </View>
         )}
@@ -276,7 +282,7 @@ export default function AddBookScreen() {
         {/* Results list (when multiple and none selected) */}
         {!loading && !error && results.length > 1 && !selected && (
           <View>
-            <Text style={{ fontSize: 15, color: "#666", marginBottom: 8 }}>
+            <Text style={{ fontSize: 15, color: colors.textSecondary, marginBottom: 8 }}>
               {results.length} resultados — elegí uno:
             </Text>
             {results.map((item, index) => (
@@ -287,7 +293,7 @@ export default function AddBookScreen() {
                   flexDirection: "row",
                   padding: 12,
                   borderWidth: 1,
-                  borderColor: "#e0e0e0",
+                  borderColor: colors.borderLight,
                   borderRadius: 8,
                   marginBottom: 8,
                   gap: 12,
@@ -306,7 +312,7 @@ export default function AddBookScreen() {
                       width: 40,
                       height: 60,
                       borderRadius: 4,
-                      backgroundColor: "#e0e0e0",
+                      backgroundColor: colors.borderLight,
                       justifyContent: "center",
                       alignItems: "center",
                     }}
@@ -316,19 +322,19 @@ export default function AddBookScreen() {
                 )}
                 <View style={{ flex: 1 }}>
                   <Text
-                    style={{ fontSize: 15, fontWeight: "600" }}
+                    style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary }}
                     numberOfLines={1}
                   >
                     {item.title}
                   </Text>
                   <Text
-                    style={{ fontSize: 13, color: "#666", marginTop: 2 }}
+                    style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}
                     numberOfLines={1}
                   >
                     {item.authors.join(", ")}
                   </Text>
                   {item.pageCount > 0 && (
-                    <Text style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
+                    <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>
                       {item.pageCount} páginas
                     </Text>
                   )}
@@ -346,7 +352,7 @@ export default function AddBookScreen() {
                 onPress={() => setSelected(null)}
                 style={{ marginBottom: 12 }}
               >
-                <Text style={{ color: "#007AFF", fontSize: 14 }}>
+                <Text style={{ color: colors.primary, fontSize: 14 }}>
                   ← Volver a resultados
                 </Text>
               </Pressable>
@@ -366,7 +372,7 @@ export default function AddBookScreen() {
                     width: 140,
                     height: 210,
                     borderRadius: 8,
-                    backgroundColor: "#e0e0e0",
+                    backgroundColor: colors.borderLight,
                     justifyContent: "center",
                     alignItems: "center",
                   }}
@@ -381,6 +387,7 @@ export default function AddBookScreen() {
               style={{
                 fontSize: 20,
                 fontWeight: "bold",
+                color: colors.textPrimary,
                 textAlign: "center",
               }}
             >
@@ -389,7 +396,7 @@ export default function AddBookScreen() {
             <Text
               style={{
                 fontSize: 15,
-                color: "#666",
+                color: colors.textSecondary,
                 textAlign: "center",
                 marginTop: 4,
               }}
@@ -400,7 +407,7 @@ export default function AddBookScreen() {
               <Text
                 style={{
                   fontSize: 14,
-                  color: "#999",
+                  color: colors.textTertiary,
                   textAlign: "center",
                   marginTop: 4,
                 }}
@@ -414,6 +421,7 @@ export default function AddBookScreen() {
               style={{
                 fontSize: 15,
                 fontWeight: "600",
+                color: colors.textPrimary,
                 marginTop: 24,
                 marginBottom: 8,
               }}
@@ -443,14 +451,14 @@ export default function AddBookScreen() {
                       paddingVertical: 8,
                       borderRadius: 20,
                       borderWidth: 1,
-                      borderColor: isActive ? "#007AFF" : "#ddd",
-                      backgroundColor: isActive ? "#007AFF" : "#fff",
+                      borderColor: isActive ? colors.primary : colors.border,
+                      backgroundColor: isActive ? colors.primary : colors.background,
                     }}
                   >
                     <Text
                       style={{
                         fontSize: 14,
-                        color: isActive ? "#fff" : "#333",
+                        color: isActive ? colors.onPrimary : colors.textPrimary,
                         fontWeight: isActive ? "600" : "400",
                       }}
                     >
@@ -466,14 +474,14 @@ export default function AddBookScreen() {
               onPress={handleAdd}
               haptic="none"
               style={{
-                backgroundColor: "#34C759",
+                backgroundColor: colors.success,
                 paddingVertical: 14,
                 borderRadius: 10,
                 alignItems: "center",
                 marginTop: 24,
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>
+              <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 16 }}>
                 Agregar a biblioteca
               </Text>
             </AnimatedPressable>

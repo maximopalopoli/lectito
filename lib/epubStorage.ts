@@ -51,6 +51,28 @@ export async function readEpubAsBase64(uri: string): Promise<string> {
   });
 }
 
+/** Restore an ePub from a backup under a stable book-specific name. */
+export async function restoreEpub(bookId: string, base64: string): Promise<string> {
+  const safeId = bookId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  if (Platform.OS === 'web') {
+    const key = WEB_STORAGE_PREFIX + safeId;
+    localStorage.setItem(key, base64);
+    return key;
+  }
+
+  const FileSystem = await import('expo-file-system/legacy');
+  const dir = `${FileSystem.documentDirectory}epubs/`;
+  const dirInfo = await FileSystem.getInfoAsync(dir);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  }
+  const uri = `${dir}${safeId}.epub`;
+  await FileSystem.writeAsStringAsync(uri, base64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return uri;
+}
+
 /**
  * Delete an ePub file from permanent storage.
  */

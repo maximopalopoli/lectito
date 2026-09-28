@@ -3,8 +3,8 @@ import { Text, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 
 import type { HeatmapDay } from "@/lib/stats";
+import { useTheme } from "@/lib/theme";
 
-const LEVEL_COLORS = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e"];
 const ROW_LABELS = ["", "Lun", "", "Mié", "", "Vie", ""];
 const LABEL_WIDTH_RATIO = 0.08; // % of container for day labels
 const MIN_LABEL_WIDTH = 24;
@@ -16,6 +16,8 @@ interface HeatmapProps {
 
 export default function Heatmap({ data }: HeatmapProps) {
   const [containerWidth, setContainerWidth] = useState(0);
+  const colors = useTheme();
+  const levelColors = [colors.surfaceAlt, "#9be9a8", "#40c463", "#30a14e"];
 
   if (data.length === 0) return null;
 
@@ -81,7 +83,7 @@ export default function Heatmap({ data }: HeatmapProps) {
   return (
     <View
       style={{
-        backgroundColor: "#f5f5f5",
+        backgroundColor: colors.surface,
         borderRadius: 12,
         padding,
         maxWidth: 500,
@@ -108,7 +110,7 @@ export default function Heatmap({ data }: HeatmapProps) {
                   position: "absolute",
                   left: m.weekIndex * (cellSize + cellGap),
                   fontSize: 10,
-                  color: "#666",
+                  color: colors.textSecondary,
                 }}
               >
                 {m.label}
@@ -125,7 +127,7 @@ export default function Heatmap({ data }: HeatmapProps) {
                   key={i}
                   style={{ height: cellSize, justifyContent: "center" }}
                 >
-                  <Text style={{ fontSize: Math.min(cellSize * 0.7, 10), color: "#666" }}>
+                  <Text style={{ fontSize: Math.min(cellSize * 0.7, 10), color: colors.textSecondary }}>
                     {label}
                   </Text>
                 </View>
@@ -146,7 +148,7 @@ export default function Heatmap({ data }: HeatmapProps) {
                           height: cellSize,
                           borderRadius: Math.max(cellSize * 0.15, 2),
                           backgroundColor: day
-                            ? LEVEL_COLORS[day.level]
+                            ? levelColors[day.level]
                             : "transparent",
                         }}
                       />
@@ -167,8 +169,8 @@ export default function Heatmap({ data }: HeatmapProps) {
               gap: cellGap,
             }}
           >
-            <Text style={{ fontSize: 10, color: "#666" }}>Menos</Text>
-            {LEVEL_COLORS.map((color, i) => (
+            <Text style={{ fontSize: 10, color: colors.textSecondary }}>Menos</Text>
+            {levelColors.map((color, i) => (
               <View
                 key={i}
                 style={{
@@ -179,7 +181,7 @@ export default function Heatmap({ data }: HeatmapProps) {
                 }}
               />
             ))}
-            <Text style={{ fontSize: 10, color: "#666" }}>Más</Text>
+            <Text style={{ fontSize: 10, color: colors.textSecondary }}>Más</Text>
           </View>
         </View>
       )}

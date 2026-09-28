@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -8,6 +9,7 @@ import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCard from "@/components/BookCard";
 import SearchBar from "@/components/SearchBar";
 import FilterBar from "@/components/FilterBar";
+import { spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import type { Book, BookStatus } from "@/types";
 
@@ -48,6 +50,8 @@ export default function LibraryScreen() {
   const [minRating, setMinRating] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const books = useBooksStore((s) => s.books);
   const deleteBook = useBooksStore((s) => s.deleteBook);
 
@@ -89,6 +93,24 @@ export default function LibraryScreen() {
     setMinRating(null);
   }, []);
 
+  const confirmDelete = useCallback(
+    (book: Book) => {
+      Alert.alert(
+        "Eliminar libro",
+        `¿Eliminar "${book.title}"? También se borran sus sesiones y citas. Esta acción no se puede deshacer.`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Eliminar",
+            style: "destructive",
+            onPress: () => deleteBook(book.id),
+          },
+        ],
+      );
+    },
+    [deleteBook],
+  );
+
   // Books for the active tab (no search/filter applied)
   const tabBooks = useMemo(
     () => books.filter((b) => b.status === activeTab),
@@ -96,7 +118,7 @@ export default function LibraryScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff", paddingTop: 60 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + spacing.md }}>
       {/* Header */}
       <View
           style={{
@@ -107,7 +129,7 @@ export default function LibraryScreen() {
             marginBottom: 12,
           }}
         >
-          <Text style={{ fontSize: 28, fontWeight: "bold" }}>Biblioteca</Text>
+          <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>Biblioteca</Text>
           <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
             {activeTab === "TBR" && !hasAnyFilter && (
               <AnimatedPressable
@@ -115,7 +137,7 @@ export default function LibraryScreen() {
                 haptic="light"
                 scaleDown={0.9}
                 style={{
-                  backgroundColor: "#f0f7ff",
+                  backgroundColor: colors.surfaceTint,
                   width: 36,
                   height: 36,
                   borderRadius: 18,
@@ -123,7 +145,7 @@ export default function LibraryScreen() {
                   alignItems: "center",
                 }}
               >
-                <Ionicons name="compass-outline" size={20} color="#007AFF" />
+                <Ionicons name="compass-outline" size={20} color={colors.primary} />
               </AnimatedPressable>
             )}
             <AnimatedPressable
@@ -131,7 +153,7 @@ export default function LibraryScreen() {
               haptic="medium"
               scaleDown={0.9}
               style={{
-                backgroundColor: "#007AFF",
+                backgroundColor: colors.primary,
                 width: 36,
                 height: 36,
                 borderRadius: 18,
@@ -139,7 +161,7 @@ export default function LibraryScreen() {
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginTop: -2 }}>+</Text>
+              <Text style={{ color: colors.onPrimary, fontSize: 20, fontWeight: "bold", marginTop: -2 }}>+</Text>
             </AnimatedPressable>
           </View>
         </View>
@@ -163,8 +185,8 @@ export default function LibraryScreen() {
               height: 38,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: showFilters ? "#007AFF" : "#ddd",
-              backgroundColor: showFilters ? "#EBF2FF" : "#f9f9f9",
+              borderColor: showFilters ? colors.primary : colors.border,
+              backgroundColor: showFilters ? colors.primaryTint : colors.surfaceAlt,
               justifyContent: "center",
               alignItems: "center",
             }}
@@ -172,7 +194,7 @@ export default function LibraryScreen() {
             <Ionicons
               name="options-outline"
               size={20}
-              color={showFilters ? "#007AFF" : "#666"}
+              color={showFilters ? colors.primary : colors.textSecondary}
             />
             {activeFilterCount > 0 && (
               <View
@@ -180,7 +202,7 @@ export default function LibraryScreen() {
                   position: "absolute",
                   top: -4,
                   right: -4,
-                  backgroundColor: "#007AFF",
+                  backgroundColor: colors.primary,
                   borderRadius: 8,
                   minWidth: 16,
                   height: 16,
@@ -189,7 +211,7 @@ export default function LibraryScreen() {
                   paddingHorizontal: 4,
                 }}
               >
-                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
+                <Text style={{ color: colors.onPrimary, fontSize: 10, fontWeight: "700" }}>
                   {activeFilterCount}
                 </Text>
               </View>
@@ -222,10 +244,10 @@ export default function LibraryScreen() {
               paddingHorizontal: 20,
               paddingVertical: 8,
               borderBottomWidth: 1,
-              borderBottomColor: "#f0f0f0",
+              borderBottomColor: colors.divider,
             }}
           >
-            <Text style={{ fontSize: 13, color: "#888" }}>
+            <Text style={{ fontSize: 13, color: colors.textMuted }}>
               {filteredBooks.length} resultado{filteredBooks.length !== 1 ? "s" : ""}
             </Text>
             <Pressable
@@ -235,7 +257,7 @@ export default function LibraryScreen() {
                 setShowFilters(false);
               }}
             >
-              <Text style={{ fontSize: 13, color: "#007AFF", fontWeight: "600" }}>
+              <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "600" }}>
                 Limpiar
               </Text>
             </Pressable>
@@ -249,11 +271,11 @@ export default function LibraryScreen() {
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               <View style={{ alignItems: "center", marginTop: 60, paddingHorizontal: 32 }}>
-                <Ionicons name="search-outline" size={48} color="#ccc" style={{ marginBottom: 12 }} />
-                <Text style={{ fontSize: 16, fontWeight: "600", color: "#666", marginBottom: 4, textAlign: "center" }}>
+                <Ionicons name="search-outline" size={48} color={colors.icon} style={{ marginBottom: 12 }} />
+                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.textSecondary, marginBottom: 4, textAlign: "center" }}>
                   Sin resultados
                 </Text>
-                <Text style={{ color: "#999", textAlign: "center", fontSize: 14 }}>
+                <Text style={{ color: colors.textTertiary, textAlign: "center", fontSize: 14 }}>
                   Probá ajustar la búsqueda o los filtros.
                 </Text>
               </View>
@@ -262,7 +284,7 @@ export default function LibraryScreen() {
               <BookCard
                 book={item}
                 onPress={() => router.push(`/book/${item.id}`)}
-                onDelete={() => deleteBook(item.id)}
+                onDelete={() => confirmDelete(item)}
               />
             )}
           />
@@ -290,7 +312,7 @@ export default function LibraryScreen() {
                     flex: 1,
                     paddingVertical: 8,
                     borderBottomWidth: 2,
-                    borderBottomColor: isActive ? "#007AFF" : "#e0e0e0",
+                    borderBottomColor: isActive ? colors.primary : colors.borderLight,
                   }}
                 >
                   <Text
@@ -298,7 +320,7 @@ export default function LibraryScreen() {
                       textAlign: "center",
                       fontSize: 13,
                       fontWeight: isActive ? "700" : "400",
-                      color: isActive ? "#007AFF" : "#888",
+                      color: isActive ? colors.primary : colors.textMuted,
                     }}
                   >
                     {tab.label}
@@ -318,13 +340,13 @@ export default function LibraryScreen() {
                 <Ionicons
                   name={EMPTY_ICONS[activeTab]}
                   size={48}
-                  color="#ccc"
+                  color={colors.icon}
                   style={{ marginBottom: 12 }}
                 />
-                <Text style={{ fontSize: 16, fontWeight: "600", color: "#666", marginBottom: 4, textAlign: "center" }}>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.textSecondary, marginBottom: 4, textAlign: "center" }}>
                   No hay libros acá
                 </Text>
-                <Text style={{ color: "#999", textAlign: "center", fontSize: 14 }}>
+                <Text style={{ color: colors.textTertiary, textAlign: "center", fontSize: 14 }}>
                   {EMPTY_MESSAGES[activeTab]}
                 </Text>
                 {activeTab === "TBR" && (
@@ -332,14 +354,14 @@ export default function LibraryScreen() {
                     onPress={() => router.push("/book/add")}
                     haptic="medium"
                     style={{
-                      backgroundColor: "#007AFF",
+                      backgroundColor: colors.primary,
                       borderRadius: 10,
                       paddingVertical: 12,
                       paddingHorizontal: 24,
                       marginTop: 16,
                     }}
                   >
-                    <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+                    <Text style={{ color: colors.onPrimary, fontSize: 15, fontWeight: "600" }}>
                       Agregar libro
                     </Text>
                   </AnimatedPressable>
@@ -350,7 +372,7 @@ export default function LibraryScreen() {
               <BookCard
                 book={item}
                 onPress={() => router.push(`/book/${item.id}`)}
-                onDelete={() => deleteBook(item.id)}
+                onDelete={() => confirmDelete(item)}
               />
             )}
           />

@@ -1,18 +1,19 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { reportReadError, saveJson } from '@/lib/storage';
 
 import type { ReaderPosition, ReaderTheme } from '@/types';
 
 const STORAGE_KEY = 'aleph-reader';
 const LOCATIONS_KEY = 'aleph-locations';
 
-interface ReaderData {
+export interface ReaderData {
   positions: Record<string, ReaderPosition>;
   settings: ReaderTheme;
 }
 
 function save(data: ReaderData) {
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
+  void saveJson(STORAGE_KEY, data);
 }
 
 const DEFAULT_SETTINGS: ReaderTheme = {
@@ -30,6 +31,7 @@ export interface ReaderSettingsState {
   updateSettings: (partial: Partial<ReaderTheme>) => void;
   saveLocations: (bookId: string, locations: string) => void;
   getLocations: (bookId: string) => Promise<string | null>;
+  replaceReaderData: (data: ReaderData) => void;
 }
 
 export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) => {
@@ -48,7 +50,10 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
       }
       set({ _hydrated: true });
     })
-    .catch(() => set({ _hydrated: true }));
+    .catch(() => {
+      reportReadError(STORAGE_KEY);
+      set({ _hydrated: true });
+    });
 
   return {
     positions: {},
@@ -57,6 +62,7 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
 
     savePosition: (bookId, cfi) =>
       set((state) => {
+        if (!state._hydrated) return state;
         const positions = {
           ...state.positions,
           [bookId]: { cfi, updatedAt: new Date().toISOString() },
@@ -72,6 +78,7 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
 
     updateSettings: (partial) =>
       set((state) => {
+        if (!state._hydrated) return state;
         const settings = { ...state.settings, ...partial };
         save({ positions: state.positions, settings });
         return { settings };
@@ -82,7 +89,7 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
         .then((raw) => {
           const cache = raw ? JSON.parse(raw) : {};
           cache[bookId] = locations;
-          return AsyncStorage.setItem(LOCATIONS_KEY, JSON.stringify(cache));
+          void saveJson(LOCATIONS_KEY, cache);
         })
         .catch(() => {});
     },
@@ -96,6 +103,12 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
       } catch {
         return null;
       }
+    },
+
+    replaceReaderData: (data) => {
+      if (!get()._hydrated) return;
+      save(data);
+      set(data);
     },
   };
 });

@@ -7,6 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
@@ -14,6 +15,7 @@ import ReviewModal from "@/components/ReviewModal";
 import StarRating from "@/components/StarRating";
 import TagBadge from "@/components/TagBadge";
 import TagsModal from "@/components/TagsModal";
+import { useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useQuotesStore } from "@/store/quotes";
 import { useSessionsStore } from "@/store/sessions";
@@ -37,6 +39,8 @@ const STATUS_LABEL: Record<BookStatus, string> = {
 export default function BookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const books = useBooksStore((s) => s.books);
   const updateBook = useBooksStore((s) => s.updateBook);
   const changeStatus = useBooksStore((s) => s.changeStatus);
@@ -61,10 +65,10 @@ export default function BookDetailScreen() {
 
   if (!book) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "#888", fontSize: 16 }}>Libro no encontrado</Text>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+        <Text style={{ color: colors.textMuted, fontSize: 16 }}>Libro no encontrado</Text>
         <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))} style={{ marginTop: 16 }}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>Volver</Text>
+          <Text style={{ color: colors.primary, fontSize: 16 }}>Volver</Text>
         </Pressable>
       </View>
     );
@@ -83,7 +87,7 @@ export default function BookDetailScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
@@ -91,13 +95,13 @@ export default function BookDetailScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingTop: 56,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
           paddingBottom: 12,
         }}
       >
         <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))} style={{ padding: 4 }}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
         </Pressable>
       </View>
 
@@ -115,7 +119,7 @@ export default function BookDetailScreen() {
               width: 140,
               height: 210,
               borderRadius: 8,
-              backgroundColor: "#e0e0e0",
+              backgroundColor: colors.borderLight,
               justifyContent: "center",
               alignItems: "center",
             }}
@@ -127,13 +131,13 @@ export default function BookDetailScreen() {
 
       {/* Info */}
       <View style={{ paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", textAlign: "center" }}>
+        <Text style={{ fontSize: 22, fontWeight: "bold", textAlign: "center", color: colors.textPrimary }}>
           {book.title}
         </Text>
         <Text
           style={{
             fontSize: 15,
-            color: "#666",
+            color: colors.textSecondary,
             textAlign: "center",
             marginTop: 4,
           }}
@@ -154,19 +158,19 @@ export default function BookDetailScreen() {
           {book.isbn13 && <InfoChip label="ISBN" value={book.isbn13} />}
         </View>
 
-        <Text style={{ color: "#999", fontSize: 12, textAlign: "center", marginTop: 8 }}>
+        <Text style={{ color: colors.textTertiary, fontSize: 12, textAlign: "center", marginTop: 8 }}>
           Agregado el {new Date(book.addedAt).toLocaleDateString()}
         </Text>
 
         {/* Progress */}
         <View style={{ marginTop: 24 }}>
-          <Text style={{ fontWeight: "600", fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
             Progreso
           </Text>
           <View
             style={{
               height: 8,
-              backgroundColor: "#e8e8e8",
+              backgroundColor: colors.track,
               borderRadius: 4,
               overflow: "hidden",
             }}
@@ -175,12 +179,12 @@ export default function BookDetailScreen() {
               style={{
                 height: 8,
                 width: `${Math.min(progress * 100, 100)}%`,
-                backgroundColor: "#007AFF",
+                backgroundColor: colors.primary,
                 borderRadius: 4,
               }}
             />
           </View>
-          <Text style={{ color: "#666", fontSize: 13, marginTop: 4 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 4 }}>
             Página {book.currentPage} de {book.pageCount} (
             {Math.round(progress * 100)}%)
           </Text>
@@ -200,26 +204,28 @@ export default function BookDetailScreen() {
               value={pageInput}
               onChangeText={setPageInput}
               placeholder={`Página actual (${book.currentPage}-${book.pageCount})`}
+              placeholderTextColor={colors.textTertiary}
               keyboardType="number-pad"
               style={{
                 flex: 1,
                 borderWidth: 1,
-                borderColor: "#ddd",
+                borderColor: colors.border,
                 borderRadius: 8,
                 padding: 10,
                 fontSize: 15,
+                color: colors.textPrimary,
               }}
             />
             <Pressable
               onPress={handleSavePage}
               style={{
-                backgroundColor: "#007AFF",
+                backgroundColor: colors.primary,
                 paddingHorizontal: 16,
                 paddingVertical: 10,
                 borderRadius: 8,
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "600" }}>Guardar</Text>
+              <Text style={{ color: colors.onPrimary, fontWeight: "600" }}>Guardar</Text>
             </Pressable>
           </View>
         )}
@@ -227,7 +233,7 @@ export default function BookDetailScreen() {
         {/* Rating & Review */}
         {book.status === "DONE" && (
           <View style={{ marginTop: 24 }}>
-            <Text style={{ fontWeight: "600", fontSize: 15, marginBottom: 10 }}>
+            <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary, marginBottom: 10 }}>
               Mi reseña
             </Text>
             {book.rating != null ? (
@@ -235,16 +241,16 @@ export default function BookDetailScreen() {
                 <StarRating rating={book.rating} readonly size={24} />
               </View>
             ) : (
-              <Text style={{ color: "#999", fontSize: 13, marginBottom: 8 }}>
+              <Text style={{ color: colors.textTertiary, fontSize: 13, marginBottom: 8 }}>
                 Sin calificación
               </Text>
             )}
             {book.review ? (
-              <Text style={{ fontSize: 14, color: "#333", lineHeight: 20, fontStyle: "italic" }}>
+              <Text style={{ fontSize: 14, color: colors.textPrimary, lineHeight: 20, fontStyle: "italic" }}>
                 {book.review}
               </Text>
             ) : (
-              <Text style={{ color: "#999", fontSize: 13 }}>
+              <Text style={{ color: colors.textTertiary, fontSize: 13 }}>
                 Sin reseña
               </Text>
             )}
@@ -255,7 +261,7 @@ export default function BookDetailScreen() {
               }}
               style={{ marginTop: 10 }}
             >
-              <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "600" }}>
+              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "600" }}>
                 {book.rating != null || book.review ? "Editar reseña" : "Agregar reseña"}
               </Text>
             </Pressable>
@@ -272,9 +278,9 @@ export default function BookDetailScreen() {
               marginBottom: 10,
             }}
           >
-            <Text style={{ fontWeight: "600", fontSize: 15 }}>Etiquetas</Text>
+            <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary }}>Etiquetas</Text>
             <Pressable onPress={() => setShowTagsModal(true)}>
-              <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "600" }}>
+              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "600" }}>
                 {(book.tags ?? []).length > 0 ? "Editar" : "+ Agregar"}
               </Text>
             </Pressable>
@@ -286,7 +292,7 @@ export default function BookDetailScreen() {
               ))}
             </View>
           ) : (
-            <Text style={{ color: "#999", fontSize: 13 }}>
+            <Text style={{ color: colors.textTertiary, fontSize: 13 }}>
               Sin etiquetas
             </Text>
           )}
@@ -294,14 +300,14 @@ export default function BookDetailScreen() {
 
         {/* Actions */}
         <View style={{ marginTop: 24, gap: 10 }}>
-          <Text style={{ fontWeight: "600", fontSize: 15, marginBottom: 4 }}>
+          <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary, marginBottom: 4 }}>
             Acciones
           </Text>
 
           {book.epubUri && (
             <ActionButton
               label="Leer ePub"
-              color="#FF9500"
+              color={colors.warning}
               onPress={() => router.push({ pathname: "/book/reader", params: { bookId: book.id } })}
             />
           )}
@@ -309,7 +315,7 @@ export default function BookDetailScreen() {
           {book.status === "TBR" && (
             <ActionButton
               label="Empezar a leer"
-              color="#34C759"
+              color={colors.success}
               onPress={() => changeStatus(book.id, "READING")}
             />
           )}
@@ -318,17 +324,17 @@ export default function BookDetailScreen() {
             <>
               <ActionButton
                 label="Iniciar sesión de lectura"
-                color="#007AFF"
+                color={colors.primary}
                 onPress={() => router.push(`/session/${book.id}`)}
               />
               <ActionButton
                 label="Actualizar progreso"
-                color="#007AFF"
+                color={colors.primary}
                 onPress={() => setShowPageInput(!showPageInput)}
               />
               <ActionButton
                 label="Marcar como leído"
-                color="#34C759"
+                color={colors.success}
                 onPress={() => {
                   setReviewMode("complete");
                   setShowReviewModal(true);
@@ -336,7 +342,7 @@ export default function BookDetailScreen() {
               />
               <ActionButton
                 label="Abandonar"
-                color="#FF3B30"
+                color={colors.danger}
                 onPress={() => changeStatus(book.id, "DNF")}
               />
             </>
@@ -345,7 +351,7 @@ export default function BookDetailScreen() {
           {book.status === "DONE" && (
             <ActionButton
               label="Volver a leer"
-              color="#007AFF"
+              color={colors.primary}
               onPress={() => {
                 updateBook(book.id, { currentPage: 0 });
                 changeStatus(book.id, "READING");
@@ -356,7 +362,7 @@ export default function BookDetailScreen() {
           {book.status === "DNF" && (
             <ActionButton
               label="Reintentar"
-              color="#007AFF"
+              color={colors.primary}
               onPress={() => {
                 updateBook(book.id, { currentPage: 0 });
                 changeStatus(book.id, "READING");
@@ -366,7 +372,7 @@ export default function BookDetailScreen() {
 
           <ActionButton
             label="Compartir card"
-            color="#8B5CF6"
+            color={colors.accent}
             onPress={() => router.push({ pathname: "/book/share", params: { bookId: book.id } })}
           />
         </View>
@@ -374,7 +380,7 @@ export default function BookDetailScreen() {
         {/* Session history */}
         {sessions.length > 0 && (
           <View style={{ marginTop: 24 }}>
-            <Text style={{ fontWeight: "600", fontSize: 15, marginBottom: 10 }}>
+            <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary, marginBottom: 10 }}>
               Historial de sesiones
             </Text>
             {sessions
@@ -383,7 +389,7 @@ export default function BookDetailScreen() {
                 <View
                   key={session.id}
                   style={{
-                    backgroundColor: "#f5f5f5",
+                    backgroundColor: colors.surface,
                     borderRadius: 8,
                     padding: 12,
                     marginBottom: 8,
@@ -396,18 +402,18 @@ export default function BookDetailScreen() {
                       marginBottom: 4,
                     }}
                   >
-                    <Text style={{ fontSize: 13, color: "#666" }}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                       {new Date(session.startedAt).toLocaleDateString()}
                     </Text>
-                    <Text style={{ fontSize: 13, fontWeight: "600" }}>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textPrimary }}>
                       {session.durationMin} min
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 14 }}>
+                  <Text style={{ fontSize: 14, color: colors.textPrimary }}>
                     {session.pagesRead} páginas leídas
                   </Text>
                   {session.note && (
-                    <Text style={{ fontSize: 13, color: "#666", marginTop: 4, fontStyle: "italic" }}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4, fontStyle: "italic" }}>
                       {session.note}
                     </Text>
                   )}
@@ -426,7 +432,7 @@ export default function BookDetailScreen() {
               marginBottom: 10,
             }}
           >
-            <Text style={{ fontWeight: "600", fontSize: 15 }}>
+            <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary }}>
               Citas{quotes.length > 0 ? ` (${quotes.length})` : ""}
             </Text>
             <AnimatedPressable
@@ -435,7 +441,7 @@ export default function BookDetailScreen() {
               }
               haptic="light"
             >
-              <Text style={{ color: "#007AFF", fontSize: 14, fontWeight: "600" }}>
+              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "600" }}>
                 + Agregar
               </Text>
             </AnimatedPressable>
@@ -444,14 +450,14 @@ export default function BookDetailScreen() {
           {quotes.length === 0 ? (
             <View
               style={{
-                backgroundColor: "#f9f9f9",
+                backgroundColor: colors.surfaceAlt,
                 borderRadius: 10,
                 padding: 20,
                 alignItems: "center",
               }}
             >
               <Text style={{ fontSize: 28, marginBottom: 6 }}>{"\u201C\u201D"}</Text>
-              <Text style={{ color: "#999", fontSize: 13, textAlign: "center" }}>
+              <Text style={{ color: colors.textTertiary, fontSize: 13, textAlign: "center" }}>
                 Guarda citas y pasajes memorables de este libro.
               </Text>
             </View>
@@ -467,7 +473,7 @@ export default function BookDetailScreen() {
                     })
                   }
                   style={{
-                    backgroundColor: "#f5f5f5",
+                    backgroundColor: colors.surface,
                     borderRadius: 8,
                     padding: 12,
                     marginBottom: 8,
@@ -476,13 +482,13 @@ export default function BookDetailScreen() {
                   }}
                 >
                   <Text
-                    style={{ fontSize: 14, fontStyle: "italic", lineHeight: 20 }}
+                    style={{ fontSize: 14, fontStyle: "italic", lineHeight: 20, color: colors.textPrimary }}
                     numberOfLines={3}
                   >
                     &ldquo;{quote.text}&rdquo;
                   </Text>
                   {quote.pageNumber != null && (
-                    <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
                       Pag. {quote.pageNumber}
                     </Text>
                   )}
@@ -499,7 +505,7 @@ export default function BookDetailScreen() {
                     alignItems: "center",
                   }}
                 >
-                  <Text style={{ color: "#007AFF", fontSize: 14 }}>
+                  <Text style={{ color: colors.primary, fontSize: 14 }}>
                     Ver todas ({quotes.length})
                   </Text>
                 </AnimatedPressable>
@@ -546,12 +552,13 @@ export default function BookDetailScreen() {
 }
 
 function InfoChip({ label, value }: { label: string; value: string }) {
+  const colors = useTheme();
   return (
     <View style={{ alignItems: "center" }}>
-      <Text style={{ fontSize: 11, color: "#999", textTransform: "uppercase" }}>
+      <Text style={{ fontSize: 11, color: colors.textTertiary, textTransform: "uppercase" }}>
         {label}
       </Text>
-      <Text style={{ fontSize: 14, fontWeight: "600", marginTop: 2 }}>
+      <Text style={{ fontSize: 14, fontWeight: "600", marginTop: 2, color: colors.textPrimary }}>
         {value}
       </Text>
     </View>
@@ -567,6 +574,7 @@ function ActionButton({
   color: string;
   onPress: () => void;
 }) {
+  const colors = useTheme();
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -578,7 +586,7 @@ function ActionButton({
         alignItems: "center",
       }}
     >
-      <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+      <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>
         {label}
       </Text>
     </AnimatedPressable>

@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -7,6 +7,9 @@ import { useBooksStore } from '@/store/books';
 import { useQuotesStore } from '@/store/quotes';
 import { useSessionsStore } from '@/store/sessions';
 import { useGoalsStore } from '@/store/goals';
+import { useReaderSettingsStore, type ReaderData } from '@/store/readerSettings';
+import { readEpubAsBase64, restoreEpub } from '@/lib/epubStorage';
+import { flushStorageWrites } from '@/lib/storage';
 import type { Book, Goal, Quote, Session } from '@/types';
 
 interface BackupData {
@@ -15,22 +18,34 @@ interface BackupData {
   books: Book[];
   sessions: Session[];
   goal: Goal | null;
-  quotes?: Quote[];
+  quotes: Quote[];
+  reader: ReaderData;
+  epubs: Record<string, string>;
 }
 
 export async function exportBackup(): Promise<void> {
+  await flushStorageWrites();
   const books = useBooksStore.getState().books;
   const sessions = useSessionsStore.getState().sessions;
   const goal = useGoalsStore.getState().goal;
   const quotes = useQuotesStore.getState().quotes;
+  const { positions, settings } = useReaderSettingsStore.getState();
+  const epubs: Record<string, string> = {};
+  for (const book of books) {
+    if (book.epubUri) {
+      epubs[book.id] = await readEpubAsBase64(book.epubUri);
+    }
+  }
 
   const data: BackupData = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     books,
     sessions,
     goal,
     quotes,
+    reader: { positions, settings },
+    epubs,
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -58,7 +73,7 @@ export async function exportBackup(): Promise<void> {
   });
 }
 
-export async function importBackup(): Promise<{ books: number; sessions: number }> {
+export async function importBackup(): Promise<{ books: number; sessions: number; missingEpubs: number }> {
   const result = await DocumentPicker.getDocumentAsync({
     type: 'application/json',
     copyToCacheDirectory: true,
@@ -69,9 +84,11 @@ export async function importBackup(): Promise<{ books: number; sessions: number 
   }
 
   const asset = result.assets[0];
-  const content = await FileSystem.readAsStringAsync(asset.uri, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  const content = Platform.OS === 'web'
+    ? await (await fetch(asset.uri)).text()
+    : await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
 
   const data: unknown = JSON.parse(content);
 
@@ -85,13 +102,39 @@ export async function importBackup(): Promise<{ books: number; sessions: number 
     throw new Error('El archivo no es un backup válido de Aleph');
   }
 
-  const backup = data as BackupData;
+  const backup = data as Partial<BackupData>;
 
-  if (!Array.isArray(backup.books) || !Array.isArray(backup.sessions)) {
+  if (
+    (backup.version !== 1 && backup.version !== 2) ||
+    !Array.isArray(backup.books) ||
+    !Array.isArray(backup.sessions) ||
+    !backup.books.every(isValidBook) ||
+    !backup.sessions.every(isValidSession) ||
+    (backup.quotes !== undefined && (!Array.isArray(backup.quotes) || !backup.quotes.every(isValidQuote))) ||
+    (backup.goal != null && !isValidGoal(backup.goal))
+  ) {
     throw new Error('El archivo no contiene datos válidos');
   }
 
-  useBooksStore.getState().replaceBooks(backup.books);
+  if (backup.version === 2 && (
+    !isRecord(backup.epubs) ||
+    !backup.books.every((book) => !book.epubUri || typeof backup.epubs?.[book.id] === 'string') ||
+    !isValidReader(backup.reader)
+  )) {
+    throw new Error('El backup no contiene todos los ePub o ajustes del lector');
+  }
+
+  const missingEpubs = backup.version === 1
+    ? backup.books.filter((book) => Boolean(book.epubUri)).length
+    : 0;
+  const books: Book[] = [];
+  for (const book of backup.books) {
+    const base64 = backup.version === 2 ? backup.epubs?.[book.id] : undefined;
+    const epubUri = base64 ? await restoreEpub(book.id, base64) : null;
+    books.push({ ...book, epubUri });
+  }
+
+  useBooksStore.getState().replaceBooks(books);
   useSessionsStore.getState().replaceSessions(backup.sessions);
 
   if (backup.goal) {
@@ -100,9 +143,53 @@ export async function importBackup(): Promise<{ books: number; sessions: number 
     useGoalsStore.getState().clearGoal();
   }
 
-  if (Array.isArray(backup.quotes)) {
-    useQuotesStore.getState().replaceQuotes(backup.quotes);
+  useQuotesStore.getState().replaceQuotes(backup.quotes ?? []);
+  if (backup.version === 2 && backup.reader) {
+    useReaderSettingsStore.getState().replaceReaderData(backup.reader);
+  } else {
+    useReaderSettingsStore.getState().replaceReaderData({
+      positions: {},
+      settings: { fontSize: 100, fontFamily: 'default', theme: 'light' },
+    });
   }
+  await flushStorageWrites();
 
-  return { books: backup.books.length, sessions: backup.sessions.length };
+  return { books: books.length, sessions: backup.sessions.length, missingEpubs };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidBook(value: unknown): value is Book {
+  return isRecord(value) && typeof value.id === 'string' &&
+    typeof value.title === 'string' && Array.isArray(value.authors) &&
+    value.authors.every((author) => typeof author === 'string') &&
+    typeof value.pageCount === 'number' && typeof value.currentPage === 'number' &&
+    ['TBR', 'READING', 'DONE', 'DNF'].includes(String(value.status));
+}
+
+function isValidSession(value: unknown): value is Session {
+  return isRecord(value) && typeof value.id === 'string' &&
+    typeof value.bookId === 'string' && typeof value.startedAt === 'string' &&
+    typeof value.endedAt === 'string' && typeof value.durationMin === 'number' &&
+    typeof value.pagesRead === 'number';
+}
+
+function isValidQuote(value: unknown): value is Quote {
+  return isRecord(value) && typeof value.id === 'string' &&
+    typeof value.bookId === 'string' && typeof value.text === 'string';
+}
+
+function isValidGoal(value: unknown): value is Goal {
+  return isRecord(value) && ['daily', 'weekly'].includes(String(value.period)) &&
+    ['minutes', 'pages'].includes(String(value.metric)) &&
+    typeof value.target === 'number' && Number.isFinite(value.target) && value.target > 0;
+}
+
+function isValidReader(value: unknown): value is ReaderData {
+  return isRecord(value) && isRecord(value.positions) && isRecord(value.settings) &&
+    typeof value.settings.fontSize === 'number' &&
+    ['default', 'serif', 'sans-serif', 'monospace'].includes(String(value.settings.fontFamily)) &&
+    ['light', 'dark', 'sepia'].includes(String(value.settings.theme));
 }

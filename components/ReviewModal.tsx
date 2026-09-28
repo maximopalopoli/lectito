@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 
+import { useTheme } from '@/lib/theme';
 import StarRating from './StarRating';
 
 interface ReviewModalProps {
@@ -28,6 +29,7 @@ export default function ReviewModal({
 }: ReviewModalProps) {
   const [rating, setRating] = useState<number | null>(initialRating);
   const [review, setReview] = useState(initialReview ?? '');
+  const colors = useTheme();
 
   const handleSave = () => {
     onSave(rating, review.trim() || null);
@@ -56,7 +58,7 @@ export default function ReviewModal({
         >
           <View
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: colors.card,
               borderRadius: 16,
               padding: 24,
               width: '100%',
@@ -67,6 +69,7 @@ export default function ReviewModal({
               style={{
                 fontSize: 20,
                 fontWeight: 'bold',
+                color: colors.textPrimary,
                 textAlign: 'center',
                 marginBottom: 20,
               }}
@@ -82,15 +85,17 @@ export default function ReviewModal({
               value={review}
               onChangeText={setReview}
               placeholder="Escribe tu reseña..."
+              placeholderTextColor={colors.textTertiary}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
               style={{
                 borderWidth: 1,
-                borderColor: '#ddd',
+                borderColor: colors.border,
                 borderRadius: 10,
                 padding: 12,
                 fontSize: 15,
+                color: colors.textPrimary,
                 minHeight: 100,
                 marginBottom: 20,
               }}
@@ -99,14 +104,14 @@ export default function ReviewModal({
             <Pressable
               onPress={handleSave}
               style={{
-                backgroundColor: '#007AFF',
+                backgroundColor: colors.primary,
                 paddingVertical: 14,
                 borderRadius: 10,
                 alignItems: 'center',
                 marginBottom: 10,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+              <Text style={{ color: colors.onPrimary, fontWeight: '600', fontSize: 16 }}>
                 Guardar
               </Text>
             </Pressable>
@@ -118,7 +123,7 @@ export default function ReviewModal({
                 alignItems: 'center',
               }}
             >
-              <Text style={{ color: '#888', fontSize: 15 }}>Omitir</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 15 }}>Omitir</Text>
             </Pressable>
           </View>
         </View>
