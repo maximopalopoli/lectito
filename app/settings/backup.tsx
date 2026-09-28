@@ -17,13 +17,19 @@ export default function BackupScreen() {
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleExport = async () => {
+  const handleExport = async (destination: "share" | "save") => {
+    if (exporting) return;
     setExporting(true);
     setMessage(null);
     try {
-      await exportBackup();
+      const saved = await exportBackup(destination);
+      if (!saved) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setMessage("Backup exportado correctamente");
+      setMessage(destination === "save"
+        ? "Backup guardado en la carpeta elegida"
+        : Platform.OS === "web"
+          ? "Descarga iniciada"
+          : "Se abrió el menú para compartir. Comprobá que hayas guardado el archivo.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Error al exportar");
     } finally {
@@ -127,11 +133,12 @@ export default function BackupScreen() {
             </Text>
           </View>
           <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16 }}>
-            Genera un archivo JSON con todos tus libros, sesiones y objetivo.
+            Genera un archivo JSON con tus libros, ePub, sesiones, citas y ajustes.
           </Text>
           <AnimatedPressable
-            onPress={handleExport}
+            onPress={() => handleExport(Platform.OS === "android" ? "save" : "share")}
             haptic="none"
+            disabled={exporting}
             style={{
               backgroundColor: exporting ? "#a0c4ff" : colors.primary,
               paddingVertical: 12,
@@ -140,9 +147,19 @@ export default function BackupScreen() {
             }}
           >
             <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>
-              {exporting ? "Exportando..." : "Exportar"}
+              {exporting ? "Exportando..." : Platform.OS === "android" ? "Guardar en el dispositivo" : "Exportar"}
             </Text>
           </AnimatedPressable>
+          {Platform.OS === "android" && (
+            <AnimatedPressable
+              onPress={() => handleExport("share")}
+              haptic="none"
+              disabled={exporting}
+              style={{ alignItems: "center", paddingVertical: 12, marginTop: 8 }}
+            >
+              <Text style={{ color: colors.primary, fontSize: 14 }}>Compartir archivo</Text>
+            </AnimatedPressable>
+          )}
         </View>
 
         {/* Import */}

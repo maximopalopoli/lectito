@@ -1,6 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 
 import { exportBackup, importBackup } from '../backup';
 import { readEpubAsBase64, restoreEpub } from '../epubStorage';
@@ -16,6 +17,12 @@ jest.mock('expo-file-system/legacy', () => ({
   EncodingType: { UTF8: 'utf8' },
   readAsStringAsync: jest.fn(),
   writeAsStringAsync: jest.fn(),
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+  StorageAccessFramework: {
+    requestDirectoryPermissionsAsync: jest.fn(),
+    createFileAsync: jest.fn(),
+    writeAsStringAsync: jest.fn(),
+  },
 }));
 jest.mock('expo-sharing', () => ({ shareAsync: jest.fn() }));
 jest.mock('../epubStorage', () => ({
@@ -42,6 +49,7 @@ const reader = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  Platform.OS = 'ios';
   jest.mocked(useBooksStore.getState).mockReturnValue({
     books: [book], replaceBooks: jest.fn(),
   } as never);
@@ -61,7 +69,7 @@ beforeEach(() => {
 
 test('exports an ePub and reader position with the backup', async () => {
   jest.mocked(readEpubAsBase64).mockResolvedValue('ZXB1Yg==');
-  await exportBackup();
+  await exportBackup('share');
 
   const json = jest.mocked(FileSystem.writeAsStringAsync).mock.calls[0][1];
   const backup = JSON.parse(json);
@@ -69,6 +77,48 @@ test('exports an ePub and reader position with the backup', async () => {
   expect(backup.epubs['book-1']).toBe('ZXB1Yg==');
   expect(backup.reader).toEqual(reader);
   expect(Sharing.shareAsync).toHaveBeenCalled();
+});
+
+test('saves a backup to the Android folder selected by the user', async () => {
+  Platform.OS = 'android';
+  jest.mocked(readEpubAsBase64).mockResolvedValue('ZXB1Yg==');
+  jest.mocked(FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync).mockResolvedValue({
+    granted: true, directoryUri: 'content://chosen-folder',
+  });
+  jest.mocked(FileSystem.StorageAccessFramework.createFileAsync).mockResolvedValue('content://backup.json');
+
+  await expect(exportBackup('save')).resolves.toBe(true);
+
+  expect(FileSystem.StorageAccessFramework.createFileAsync).toHaveBeenCalledWith(
+    'content://chosen-folder', expect.stringMatching(/^aleph-backup-\d{4}-\d{2}-\d{2}-\d{6}$/), 'application/json',
+  );
+  const json = jest.mocked(FileSystem.StorageAccessFramework.writeAsStringAsync).mock.calls[0][1];
+  expect(JSON.parse(json).epubs['book-1']).toBe('ZXB1Yg==');
+  expect(Sharing.shareAsync).not.toHaveBeenCalled();
+});
+
+test('removes an incomplete Android backup if writing fails', async () => {
+  Platform.OS = 'android';
+  jest.mocked(readEpubAsBase64).mockResolvedValue('ZXB1Yg==');
+  jest.mocked(FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync).mockResolvedValue({
+    granted: true, directoryUri: 'content://chosen-folder',
+  });
+  jest.mocked(FileSystem.StorageAccessFramework.createFileAsync).mockResolvedValue('content://backup.json');
+  jest.mocked(FileSystem.StorageAccessFramework.writeAsStringAsync).mockRejectedValueOnce(new Error('Disk full'));
+
+  await expect(exportBackup('save')).rejects.toThrow('Disk full');
+  expect(FileSystem.deleteAsync).toHaveBeenCalledWith('content://backup.json', { idempotent: true });
+});
+
+test('does not create a backup when Android folder selection is cancelled', async () => {
+  Platform.OS = 'android';
+  jest.mocked(readEpubAsBase64).mockResolvedValue('ZXB1Yg==');
+  jest.mocked(FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync).mockResolvedValue({ granted: false });
+
+  await expect(exportBackup('save')).resolves.toBe(false);
+
+  expect(FileSystem.StorageAccessFramework.createFileAsync).not.toHaveBeenCalled();
+  expect(Sharing.shareAsync).not.toHaveBeenCalled();
 });
 
 test('restores ePub under a new URI and restores reader position', async () => {

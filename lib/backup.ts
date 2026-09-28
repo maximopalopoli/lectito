@@ -23,7 +23,7 @@ interface BackupData {
   epubs: Record<string, string>;
 }
 
-export async function exportBackup(): Promise<void> {
+export async function exportBackup(destination: 'share' | 'save' = 'share'): Promise<boolean> {
   await flushStorageWrites();
   const books = useBooksStore.getState().books;
   const sessions = useSessionsStore.getState().sessions;
@@ -37,9 +37,10 @@ export async function exportBackup(): Promise<void> {
     }
   }
 
+  const exportedAt = new Date().toISOString();
   const data: BackupData = {
     version: 2,
-    exportedAt: new Date().toISOString(),
+    exportedAt,
     books,
     sessions,
     goal,
@@ -49,8 +50,8 @@ export async function exportBackup(): Promise<void> {
   };
 
   const json = JSON.stringify(data, null, 2);
-  const date = new Date().toISOString().slice(0, 10);
-  const filename = `aleph-backup-${date}.json`;
+  const timestamp = exportedAt.slice(0, 19).replace('T', '-').replaceAll(':', '');
+  const filename = `aleph-backup-${timestamp}.json`;
 
   if (Platform.OS === 'web') {
     const blob = new Blob([json], { type: 'application/json' });
@@ -60,7 +61,27 @@ export async function exportBackup(): Promise<void> {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    return;
+    return true;
+  }
+
+  if (Platform.OS === 'android' && destination === 'save') {
+    const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+    if (!permission.granted) return false;
+
+    const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+      permission.directoryUri,
+      filename.slice(0, -'.json'.length),
+      'application/json',
+    );
+    try {
+      await FileSystem.StorageAccessFramework.writeAsStringAsync(fileUri, json, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+    } catch (error) {
+      await FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
+      throw error;
+    }
+    return true;
   }
 
   const filePath = `${FileSystem.cacheDirectory}${filename}`;
@@ -71,6 +92,7 @@ export async function exportBackup(): Promise<void> {
     mimeType: 'application/json',
     dialogTitle: 'Exportar backup de Aleph',
   });
+  return true;
 }
 
 export async function importBackup(): Promise<{ books: number; sessions: number; missingEpubs: number }> {
