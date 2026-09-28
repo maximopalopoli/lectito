@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import { useTheme } from "@/lib/theme";
 import { useGoalsStore } from "@/store/goals";
 import type { GoalMetric, GoalPeriod } from "@/types";
 
@@ -19,6 +21,8 @@ const PERIODS: { label: string; value: GoalPeriod }[] = [
 
 export default function ConfigureGoalScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const { goal, setGoal, clearGoal } = useGoalsStore();
 
   const [metric, setMetric] = useState<GoalMetric>(goal?.metric ?? "minutes");
@@ -43,7 +47,7 @@ export default function ConfigureGoalScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
     >
@@ -52,23 +56,23 @@ export default function ConfigureGoalScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingTop: 56,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
           paddingBottom: 12,
         }}
       >
         <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
         </Pressable>
       </View>
 
       <View style={{ paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 24 }}>
+        <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.textPrimary, marginBottom: 24 }}>
           {goal ? "Editar objetivo" : "Nuevo objetivo"}
         </Text>
 
         {/* Metric selector */}
-        <Text style={{ fontSize: 15, fontWeight: "600", marginBottom: 8 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 8 }}>
           ¿Qué querés medir?
         </Text>
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
@@ -88,15 +92,15 @@ export default function ConfigureGoalScreen() {
                   paddingVertical: 12,
                   borderRadius: 10,
                   borderWidth: 1,
-                  borderColor: isActive ? "#007AFF" : "#ddd",
-                  backgroundColor: isActive ? "#007AFF" : "#fff",
+                  borderColor: isActive ? colors.primary : colors.border,
+                  backgroundColor: isActive ? colors.primary : colors.background,
                   alignItems: "center",
                 }}
               >
                 <Text
                   style={{
                     fontSize: 15,
-                    color: isActive ? "#fff" : "#333",
+                    color: isActive ? colors.onPrimary : colors.textPrimary,
                     fontWeight: isActive ? "600" : "400",
                   }}
                 >
@@ -108,7 +112,7 @@ export default function ConfigureGoalScreen() {
         </View>
 
         {/* Period selector */}
-        <Text style={{ fontSize: 15, fontWeight: "600", marginBottom: 8 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 8 }}>
           ¿Cada cuánto?
         </Text>
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
@@ -128,15 +132,15 @@ export default function ConfigureGoalScreen() {
                   paddingVertical: 12,
                   borderRadius: 10,
                   borderWidth: 1,
-                  borderColor: isActive ? "#007AFF" : "#ddd",
-                  backgroundColor: isActive ? "#007AFF" : "#fff",
+                  borderColor: isActive ? colors.primary : colors.border,
+                  backgroundColor: isActive ? colors.primary : colors.background,
                   alignItems: "center",
                 }}
               >
                 <Text
                   style={{
                     fontSize: 15,
-                    color: isActive ? "#fff" : "#333",
+                    color: isActive ? colors.onPrimary : colors.textPrimary,
                     fontWeight: isActive ? "600" : "400",
                   }}
                 >
@@ -148,7 +152,7 @@ export default function ConfigureGoalScreen() {
         </View>
 
         {/* Target input */}
-        <Text style={{ fontSize: 15, fontWeight: "600", marginBottom: 8 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 8 }}>
           Objetivo
         </Text>
         <View
@@ -164,17 +168,19 @@ export default function ConfigureGoalScreen() {
             onChangeText={setTarget}
             keyboardType="number-pad"
             placeholder="20"
+            placeholderTextColor={colors.textTertiary}
             style={{
               flex: 1,
               borderWidth: 1,
-              borderColor: "#ddd",
+              borderColor: colors.border,
               borderRadius: 8,
               padding: 12,
               fontSize: 18,
+              color: colors.textPrimary,
               textAlign: "center",
             }}
           />
-          <Text style={{ fontSize: 15, color: "#666" }}>
+          <Text style={{ fontSize: 15, color: colors.textSecondary }}>
             {metric === "minutes" ? "min" : "pág"} /{" "}
             {period === "daily" ? "día" : "semana"}
           </Text>
@@ -185,13 +191,13 @@ export default function ConfigureGoalScreen() {
           onPress={handleSave}
           haptic="none"
           style={{
-            backgroundColor: isValid ? "#34C759" : "#a0d8a8",
+            backgroundColor: isValid ? colors.success : "#a0d8a8",
             paddingVertical: 14,
             borderRadius: 10,
             alignItems: "center",
           }}
         >
-          <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>
+          <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 16 }}>
             Guardar objetivo
           </Text>
         </AnimatedPressable>
@@ -209,7 +215,7 @@ export default function ConfigureGoalScreen() {
               marginTop: 12,
             }}
           >
-            <Text style={{ color: "#FF3B30", fontWeight: "600", fontSize: 15 }}>
+            <Text style={{ color: colors.danger, fontWeight: "600", fontSize: 15 }}>
               Eliminar objetivo
             </Text>
           </AnimatedPressable>

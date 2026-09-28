@@ -6,9 +6,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
+import { useTheme } from '@/lib/theme';
 import { useQuotesStore } from '@/store/quotes';
 import type { QuoteColor } from '@/types';
 
@@ -26,6 +28,8 @@ export default function QuoteFormScreen() {
     quoteId?: string;
   }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
 
   const allQuotes = useQuotesStore((s) => s.quotes);
   const addQuote = useQuotesStore((s) => s.addQuote);
@@ -74,7 +78,7 @@ export default function QuoteFormScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
     >
@@ -84,15 +88,15 @@ export default function QuoteFormScreen() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingTop: 56,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
           paddingBottom: 12,
         }}
       >
         <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: '#007AFF', fontSize: 16 }}>Cancelar</Text>
+          <Text style={{ color: colors.primary, fontSize: 16 }}>Cancelar</Text>
         </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '600' }}>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary }}>
           {isEditing ? 'Editar cita' : 'Nueva cita'}
         </Text>
         <View style={{ width: 60 }} />
@@ -101,20 +105,22 @@ export default function QuoteFormScreen() {
       <View style={{ paddingHorizontal: 24, gap: 20 }}>
         {/* Quote text */}
         <View>
-          <Text style={{ fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
             Cita *
           </Text>
           <TextInput
             value={text}
             onChangeText={setText}
             placeholder="Escribe o pega la cita..."
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: colors.border,
               borderRadius: 10,
               padding: 14,
               fontSize: 15,
+              color: colors.textPrimary,
               minHeight: 120,
               textAlignVertical: 'top',
             }}
@@ -123,40 +129,44 @@ export default function QuoteFormScreen() {
 
         {/* Page number */}
         <View>
-          <Text style={{ fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
             Pagina (opcional)
           </Text>
           <TextInput
             value={pageStr}
             onChangeText={setPageStr}
             placeholder="Numero de pagina"
+            placeholderTextColor={colors.textTertiary}
             keyboardType="number-pad"
             style={{
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: colors.border,
               borderRadius: 10,
               padding: 14,
               fontSize: 15,
+              color: colors.textPrimary,
             }}
           />
         </View>
 
         {/* Note */}
         <View>
-          <Text style={{ fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
             Nota personal (opcional)
           </Text>
           <TextInput
             value={note}
             onChangeText={setNote}
             placeholder="Tu reflexion sobre esta cita..."
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: colors.border,
               borderRadius: 10,
               padding: 14,
               fontSize: 15,
+              color: colors.textPrimary,
               minHeight: 80,
               textAlignVertical: 'top',
             }}
@@ -165,7 +175,7 @@ export default function QuoteFormScreen() {
 
         {/* Color picker */}
         <View>
-          <Text style={{ fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+          <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
             Color
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -179,7 +189,7 @@ export default function QuoteFormScreen() {
                   borderRadius: 18,
                   backgroundColor: c.hex,
                   borderWidth: color === c.value ? 3 : 0,
-                  borderColor: '#333',
+                  borderColor: colors.textPrimary,
                 }}
               />
             ))}
@@ -191,14 +201,14 @@ export default function QuoteFormScreen() {
           onPress={handleSave}
           haptic="medium"
           style={{
-            backgroundColor: canSave ? '#007AFF' : '#ccc',
+            backgroundColor: canSave ? colors.primary : colors.border,
             paddingVertical: 14,
             borderRadius: 10,
             alignItems: 'center',
             marginTop: 8,
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+          <Text style={{ color: colors.onPrimary, fontWeight: '600', fontSize: 16 }}>
             {isEditing ? 'Guardar cambios' : 'Agregar cita'}
           </Text>
         </AnimatedPressable>

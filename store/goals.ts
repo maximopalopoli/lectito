@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { removeStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { Goal } from '@/types';
 
@@ -7,9 +8,9 @@ const STORAGE_KEY = 'aleph-goal';
 
 function saveGoal(goal: Goal | null) {
   if (goal) {
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(goal)).catch(() => {});
+    void saveJson(STORAGE_KEY, goal);
   } else {
-    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    void removeStored(STORAGE_KEY);
   }
 }
 
@@ -20,7 +21,7 @@ export interface GoalsState {
   clearGoal: () => void;
 }
 
-export const useGoalsStore = create<GoalsState>()((set) => {
+export const useGoalsStore = create<GoalsState>()((set, get) => {
   AsyncStorage.getItem(STORAGE_KEY)
     .then((raw) => {
       if (raw) {
@@ -30,18 +31,23 @@ export const useGoalsStore = create<GoalsState>()((set) => {
         set({ _hydrated: true });
       }
     })
-    .catch(() => set({ _hydrated: true }));
+    .catch(() => {
+      reportReadError(STORAGE_KEY);
+      set({ _hydrated: true });
+    });
 
   return {
     goal: null,
     _hydrated: false,
 
     setGoal: (goal) => {
+      if (!get()._hydrated) return;
       saveGoal(goal);
       set({ goal });
     },
 
     clearGoal: () => {
+      if (!get()._hydrated) return;
       saveGoal(null);
       set({ goal: null });
     },

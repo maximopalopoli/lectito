@@ -13,6 +13,9 @@ export interface Book {
   completedAt: string | null; // ISO date, set when status → DONE
   currentPage: number;
   epubUri: string | null;
+  rating: number | null;    // 1-5 stars
+  review: string | null;    // free-text personal review
+  tags: string[];           // custom user tags (genre, theme, etc.)
 }
 
-export type BookSearchResult = Omit<Book, 'id' | 'addedAt' | 'completedAt' | 'currentPage' | 'status' | 'epubUri'>;
+export type BookSearchResult = Pick<Book, 'title' | 'authors' | 'coverUrl' | 'isbn13' | 'isbn10' | 'pageCount'>;

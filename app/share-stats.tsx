@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 import ViewShot from 'react-native-view-shot';
 
@@ -12,6 +13,7 @@ import { useSessionsStore } from '@/store/sessions';
 
 export default function ShareStatsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
   const viewShotRef = useRef<ViewShot>(null);
@@ -37,7 +39,7 @@ export default function ShareStatsScreen() {
       style={{ flex: 1, backgroundColor: '#000' }}
       contentContainerStyle={{
         alignItems: 'center',
-        paddingTop: 56,
+        paddingTop: insets.top + 16,
         paddingBottom: 40,
       }}
     >

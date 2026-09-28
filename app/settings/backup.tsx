@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import { useTheme } from "@/lib/theme";
 import { exportBackup, importBackup } from "@/lib/backup";
 
 export default function BackupScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -35,7 +39,10 @@ export default function BackupScreen() {
         const result = await importBackup();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setMessage(
-          `Restaurado: ${result.books} libros y ${result.sessions} sesiones`,
+          `Restaurado: ${result.books} libros y ${result.sessions} sesiones` +
+          (result.missingEpubs > 0
+            ? `. ${result.missingEpubs} ePub no estaban incluidos en este backup antiguo; volvé a importarlos.`
+            : ""),
         );
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Error al importar";
@@ -65,7 +72,7 @@ export default function BackupScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
@@ -73,28 +80,28 @@ export default function BackupScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingTop: 56,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
           paddingBottom: 12,
         }}
       >
         <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
         </Pressable>
       </View>
 
       <View style={{ paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 8 }}>
+        <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.textPrimary, marginBottom: 8 }}>
           Backup
         </Text>
-        <Text style={{ fontSize: 14, color: "#666", marginBottom: 32 }}>
+        <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 32 }}>
           Exportá tus datos como JSON o restaurá desde un backup anterior.
         </Text>
 
         {/* Export */}
         <View
           style={{
-            backgroundColor: "#f5f5f5",
+            backgroundColor: colors.surface,
             borderRadius: 12,
             padding: 20,
             marginBottom: 16,
@@ -107,31 +114,32 @@ export default function BackupScreen() {
               marginBottom: 12,
             }}
           >
-            <Ionicons name="download-outline" size={22} color="#007AFF" />
+            <Ionicons name="download-outline" size={22} color={colors.primary} />
             <Text
               style={{
                 fontSize: 16,
                 fontWeight: "600",
+                color: colors.textPrimary,
                 marginLeft: 8,
               }}
             >
               Exportar datos
             </Text>
           </View>
-          <Text style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16 }}>
             Genera un archivo JSON con todos tus libros, sesiones y objetivo.
           </Text>
           <AnimatedPressable
             onPress={handleExport}
             haptic="none"
             style={{
-              backgroundColor: exporting ? "#a0c4ff" : "#007AFF",
+              backgroundColor: exporting ? "#a0c4ff" : colors.primary,
               paddingVertical: 12,
               borderRadius: 8,
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+            <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>
               {exporting ? "Exportando..." : "Exportar"}
             </Text>
           </AnimatedPressable>
@@ -140,7 +148,7 @@ export default function BackupScreen() {
         {/* Import */}
         <View
           style={{
-            backgroundColor: "#f5f5f5",
+            backgroundColor: colors.surface,
             borderRadius: 12,
             padding: 20,
           }}
@@ -152,18 +160,19 @@ export default function BackupScreen() {
               marginBottom: 12,
             }}
           >
-            <Ionicons name="push-outline" size={22} color="#FF9500" />
+            <Ionicons name="push-outline" size={22} color={colors.warning} />
             <Text
               style={{
                 fontSize: 16,
                 fontWeight: "600",
+                color: colors.textPrimary,
                 marginLeft: 8,
               }}
             >
               Restaurar backup
             </Text>
           </View>
-          <Text style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16 }}>
             Seleccioná un archivo JSON exportado previamente. Esto reemplazará
             todos los datos actuales.
           </Text>
@@ -171,13 +180,13 @@ export default function BackupScreen() {
             onPress={handleImport}
             haptic="none"
             style={{
-              backgroundColor: importing ? "#ffd699" : "#FF9500",
+              backgroundColor: importing ? "#ffd699" : colors.warning,
               paddingVertical: 12,
               borderRadius: 8,
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+            <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>
               {importing ? "Importando..." : "Restaurar"}
             </Text>
           </AnimatedPressable>
@@ -198,7 +207,7 @@ export default function BackupScreen() {
             <Text
               style={{
                 fontSize: 14,
-                color: message.startsWith("Error") ? "#FF3B30" : "#34C759",
+                color: message.startsWith("Error") ? colors.danger : colors.success,
                 textAlign: "center",
               }}
             >

@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { randomUUID } from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { reportReadError, saveJson } from '@/lib/storage';
 
 import type { Session } from '@/types';
 
 const STORAGE_KEY = 'aleph-sessions';
 
 function saveSessions(sessions: Session[]) {
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)).catch(() => {});
+  void saveJson(STORAGE_KEY, sessions);
 }
 
 export interface SessionsState {
@@ -15,10 +16,11 @@ export interface SessionsState {
   _hydrated: boolean;
   addSession: (session: Omit<Session, 'id'>) => void;
   deleteSession: (id: string) => void;
+  deleteByBook: (bookId: string) => void;
   replaceSessions: (sessions: Session[]) => void;
 }
 
-export const useSessionsStore = create<SessionsState>()((set) => {
+export const useSessionsStore = create<SessionsState>()((set, get) => {
   AsyncStorage.getItem(STORAGE_KEY)
     .then((raw) => {
       if (raw) {
@@ -30,7 +32,10 @@ export const useSessionsStore = create<SessionsState>()((set) => {
       }
       set({ _hydrated: true });
     })
-    .catch(() => set({ _hydrated: true }));
+    .catch(() => {
+      reportReadError(STORAGE_KEY);
+      set({ _hydrated: true });
+    });
 
   return {
     sessions: [],
@@ -38,6 +43,7 @@ export const useSessionsStore = create<SessionsState>()((set) => {
 
     addSession: (session) =>
       set((state) => {
+        if (!state._hydrated) return state;
         const sessions = [
           ...state.sessions,
           {
@@ -51,12 +57,22 @@ export const useSessionsStore = create<SessionsState>()((set) => {
 
     deleteSession: (id) =>
       set((state) => {
+        if (!state._hydrated) return state;
         const sessions = state.sessions.filter((s) => s.id !== id);
         saveSessions(sessions);
         return { sessions };
       }),
 
+    deleteByBook: (bookId) =>
+      set((state) => {
+        if (!state._hydrated) return state;
+        const sessions = state.sessions.filter((s) => s.bookId !== bookId);
+        saveSessions(sessions);
+        return { sessions };
+      }),
+
     replaceSessions: (sessions) => {
+      if (!get()._hydrated) return;
       saveSessions(sessions);
       set({ sessions });
     },
