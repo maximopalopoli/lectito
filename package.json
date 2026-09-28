@@ -64,5 +64,15 @@
     "jest-expo": "54.0.17",
     "typescript": "5.9.3"
   },
+  "overrides": {
+    "@expo/metro-config": {
+      "postcss": "8.5.23"
+    },
+    "eslint": {
+      "minimatch": {
+        "brace-expansion": "1.1.21"
+      }
+    }
+  },
   "private": true
 }
