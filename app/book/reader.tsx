@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { usePreventRemove, type NavigationAction } from "@react-navigation/native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 
@@ -101,6 +103,12 @@ export default function ReaderScreen() {
   const elapsedRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [showSessionSummary, setShowSessionSummary] = useState(false);
+  const [sessionNote, setSessionNote] = useState("");
+  const [canLeave, setCanLeave] = useState(false);
+  const pendingExitActionRef = useRef<NavigationAction | null>(null);
+  const exitDispatchedRef = useRef(false);
+  const sessionEndedAtRef = useRef<string | null>(null);
   const initialPercentRef = useRef<number | null>(null);
   const finalPercentRef = useRef(0);
   const netPagesRef = useRef(0);
@@ -123,16 +131,23 @@ export default function ReaderScreen() {
     return () => { deactivateKeepAwake("reader"); };
   }, []);
 
-  // Start timer
-  useEffect(() => {
+  const startTimer = useCallback(() => {
+    if (intervalRef.current) return;
     intervalRef.current = setInterval(() => {
       elapsedRef.current += 1;
       setElapsed(elapsedRef.current);
     }, 1000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
   }, []);
+
+  const pauseTimer = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    startTimer();
+    return pauseTimer;
+  }, [startTimer, pauseTimer]);
 
   // Auto-set status to READING if TBR (run once on mount)
   useEffect(() => {
@@ -142,8 +157,8 @@ export default function ReaderScreen() {
   }, [booksHydrated, book, changeStatus]);
 
   // Save session on leaving
-  const saveSession = useCallback(() => {
-    if (sessionSavedRef.current || !bookId || !booksHydrated || !sessionsHydrated || !book) return;
+  const saveSession = useCallback((note: string) => {
+    if (sessionSavedRef.current || !bookId || !booksHydrated || !sessionsHydrated || !book) return false;
     sessionSavedRef.current = true;
 
     const durationMin = Math.max(1, Math.round(elapsedRef.current / 60));
@@ -153,10 +168,10 @@ export default function ReaderScreen() {
     addSession({
       bookId,
       startedAt: startedAtRef.current,
-      endedAt: new Date().toISOString(),
+      endedAt: sessionEndedAtRef.current ?? new Date().toISOString(),
       durationMin,
       pagesRead,
-      note: null,
+      note: note.trim() || null,
     });
 
     // Update currentPage based on reading percentage
@@ -164,15 +179,41 @@ export default function ReaderScreen() {
       const currentPage = Math.round(finalPercentRef.current * book.pageCount);
       updateBook(bookId, { currentPage });
     }
+    return true;
   }, [bookId, book, booksHydrated, sessionsHydrated, addSession, updateBook]);
 
-  // Save on navigation away
+  const openSessionSummary = useCallback(() => {
+    if (sessionEndedAtRef.current) return;
+    sessionEndedAtRef.current = new Date().toISOString();
+    pauseTimer();
+    setShowSessionSummary(true);
+  }, [pauseTimer]);
+
+  const continueReading = useCallback(() => {
+    pendingExitActionRef.current = null;
+    sessionEndedAtRef.current = null;
+    setShowSessionSummary(false);
+    startTimer();
+  }, [startTimer]);
+
+  // Intercept the toolbar, Android back button, and navigation gestures alike.
+  usePreventRemove(Boolean(book?.epubUri && booksHydrated && sessionsHydrated && !canLeave), ({ data }) => {
+    pendingExitActionRef.current = data.action;
+    openSessionSummary();
+  });
+
+  // Dispatch only after the removal guard has been lifted.
   useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", () => {
-      saveSession();
-    });
-    return unsubscribe;
-  }, [navigation, saveSession]);
+    if (!canLeave || exitDispatchedRef.current) return;
+    exitDispatchedRef.current = true;
+    if (pendingExitActionRef.current) {
+      navigation.dispatch(pendingExitActionRef.current);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(`/book/${bookId}`);
+    }
+  }, [canLeave, navigation, router, bookId]);
 
   // Load ePub when the stored book has finished hydrating.
   useEffect(() => {
@@ -316,11 +357,21 @@ export default function ReaderScreen() {
   }
 
   function handleBack() {
-    saveSession();
+    if (book?.epubUri && booksHydrated && sessionsHydrated) {
+      openSessionSummary();
+      return;
+    }
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace(`/book/${bookId}`);
+    }
+  }
+
+  function handleSaveSession() {
+    if (saveSession(sessionNote)) {
+      setShowSessionSummary(false);
+      setCanLeave(true);
     }
   }
 
@@ -521,6 +572,70 @@ export default function ReaderScreen() {
           {formatTime(elapsed)}
         </Text>
       </View>
+
+      {/* Closing an ePub reader completes the same reading session as the manual flow. */}
+      <Modal
+        visible={showSessionSummary}
+        transparent
+        animationType="slide"
+        onRequestClose={continueReading}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}
+        >
+          <View
+            style={{
+              backgroundColor: themeBg,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingHorizontal: 24,
+              paddingTop: 24,
+              paddingBottom: Math.max(insets.bottom, 24),
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: "600", color: themeFg, marginBottom: 4 }}>
+              Sesión finalizada
+            </Text>
+            <Text style={{ fontSize: 15, color: "#888", marginBottom: 20 }}>
+              Duración: {formatTime(elapsed)} · Progreso: {pageInfo.percent}%
+            </Text>
+
+            <Text style={{ fontSize: 14, fontWeight: "600", color: themeFg, marginBottom: 6 }}>
+              Nota (opcional)
+            </Text>
+            <TextInput
+              value={sessionNote}
+              onChangeText={setSessionNote}
+              placeholder="¿Qué te pareció lo que leíste?"
+              placeholderTextColor="#888"
+              multiline
+              numberOfLines={3}
+              style={{
+                borderWidth: 1,
+                borderColor: readerSettings.theme === "dark" ? "#555" : "#ddd",
+                borderRadius: 8,
+                padding: 12,
+                fontSize: 15,
+                color: themeFg,
+                minHeight: 80,
+                textAlignVertical: "top",
+                marginBottom: 20,
+              }}
+            />
+
+            <Pressable
+              onPress={handleSaveSession}
+              style={{ backgroundColor: "#34C759", paddingVertical: 14, borderRadius: 10, alignItems: "center" }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>Guardar sesión</Text>
+            </Pressable>
+            <Pressable onPress={continueReading} style={{ alignItems: "center", paddingVertical: 14 }}>
+              <Text style={{ color: "#007AFF", fontSize: 15 }}>Seguir leyendo</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Settings modal */}
       <Modal visible={showSettings} transparent animationType="slide">
