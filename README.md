@@ -1,37 +1,44 @@
 # Aleph
 
-Personal reading tracker app — "Strava for readers".
+Aleph is a personal reading app: a private library for tracking reading sessions, progress, and habits. The original idea is a "Strava for readers" without a social network. Its promise is simple: add books quickly, track how much you read, and keep a record of your reading journey.
 
-Book logging, reading sessions with timer, and reading habit statistics. No social component.
+## Current features
 
-## Features
+- A library with **Want to Read**, **Reading**, **Read**, and **Did Not Finish** shelves. Search by title or author and filter by tags and rating.
+- Add books by ISBN or text using Open Library and Google Books, scan barcodes, or import ePub files.
+- Timed reading sessions with pause, focus mode, pages read, and optional notes; per-book progress and session history.
+- Statistics for reading time, sessions, pages, streaks, a heatmap, books per month, and configurable goals.
+- Ratings, reviews, tags, quotes, and highlights; shareable cards without a social network.
+- An ePub reader with themes, typography, saved position, and highlights. JSON backups include books, sessions, quotes, goals, reader settings, and ePub files.
 
-- **Personal library** — Shelves: Want to Read, Reading, Read, Did Not Finish
-- **Add books by ISBN** — Search via Open Library API with Google Books fallback
-- **Reading sessions** — Timer with pause/stop, focus mode (keep screen awake)
-- **Progress tracking** — Pages read, optional notes, automatic book progress update
-- **Session history** — Visible on each book's detail screen
+Data is stored on the device. There are no accounts or cross-device sync yet; manual backups can be used to move data. See [ROADMAP.md](ROADMAP.md) for feature status and priorities.
 
-## Stack
+## Tech stack and structure
 
-- React Native + Expo SDK 54
-- TypeScript (strict)
-- Expo Router v6 (file-based routing)
-- Zustand (global state with localStorage persistence)
+- React Native + Expo SDK 54, Expo Router v6, and strict TypeScript.
+- Zustand for state management; AsyncStorage for local persistence.
+- Open Library for ISBN lookup and search, with Google Books as an alternative.
+- `app/`: screens and routes; `components/`: shared components; `store/`: state and persistence; `types/`: data models; `lib/`: APIs, ePub, statistics, and backups; `assets/`: icons and images.
+- The `@/*` import alias points to the project root. The app follows the system light/dark theme; the ePub reader has its own theme.
 
-## Setup
+The core models are `Book` (metadata, shelf, current page, review, and tags), `Session` (book, start and end times, duration, pages, and note), and `Quote` (text, note, color, and location). Daily statistics are derived from sessions. The definitions in `types/` are the source of truth for the current schema.
+
+## Run and verify
 
 ```bash
 npm install
 npm start
 ```
 
-## Scripts
+| Command | Purpose |
+| --- | --- |
+| `npm run android` | Open on Android |
+| `npm run ios` | Open on iOS |
+| `npm run web` | Open in a browser |
+| `npm run lint` | Lint screens and components |
+| `npm run typecheck` | Type-check the whole project |
+| `npm test -- --runInBand` | Run tests |
 
-| Command | Description |
-|---------|-------------|
-| `npm start` | Start Expo dev server |
-| `npm run android` | Run on Android |
-| `npm run ios` | Run on iOS |
-| `npm run web` | Run on web |
-| `npm run lint` | Run ESLint |
+CI runs lint, type-checking, and tests. Book lookups use `https://openlibrary.org/isbn/{isbn}.json` and `https://www.googleapis.com/books/v1/volumes?q={query}`. The app remains local-first; Firebase and Supabase are possible future options, not current dependencies.
+
+Navigation follows the file structure in `app/`. Update [ROADMAP.md](ROADMAP.md) when product plans or acceptance criteria change. Expo documentation is available at [docs.expo.dev](https://docs.expo.dev/).
