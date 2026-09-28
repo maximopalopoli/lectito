@@ -1,7 +1,6 @@
-const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
-const EPUB_JS_CDN = 'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js';
-
-export function getReaderHtml(): string {
+export function getReaderHtml(jszipScript: string, epubScript: string): string {
+  const safeJszip = jszipScript.replace(/<\/script/gi, '<\\/script');
+  const safeEpub = epubScript.replace(/<\/script/gi, '<\\/script');
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -30,8 +29,8 @@ export function getReaderHtml(): string {
 <div id="loading">Cargando libro...</div>
 <div id="viewer"></div>
 
-<script src="${JSZIP_CDN}"></script>
-<script src="${EPUB_JS_CDN}"></script>
+<script>${safeJszip}</script>
+<script>${safeEpub}</script>
 <script>
 (function() {
   var book = null;

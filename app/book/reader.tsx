@@ -21,7 +21,7 @@ import { useSessionsStore } from "@/store/sessions";
 import { useQuotesStore } from "@/store/quotes";
 import { useReaderSettingsStore } from "@/store/readerSettings";
 import { readEpubAsBase64 } from "@/lib/epubStorage";
-import { getReaderHtml } from "@/lib/readerHtml";
+import { loadReaderHtml } from "@/lib/readerAssets";
 import type { QuoteColor, ReaderThemeName } from "@/types";
 
 const COLOR_OPTIONS: { color: QuoteColor; hex: string }[] = [
@@ -82,6 +82,8 @@ export default function ReaderScreen() {
 
   // State
   const [loading, setLoading] = useState(true);
+  const [readerHtml, setReaderHtml] = useState<string | null>(null);
+  const [readerError, setReaderError] = useState<string | null>(null);
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showToc, setShowToc] = useState(false);
@@ -119,10 +121,21 @@ export default function ReaderScreen() {
   const pendingBase64Ref = useRef<string | null>(null);
   const pendingLocationsRef = useRef<string | null>(null);
 
-  const readerHtml = useMemo(() => getReaderHtml(), []);
-
   // Keep ref in sync with state
   useEffect(() => { quoteModeRef.current = quoteMode; }, [quoteMode]);
+
+  useEffect(() => {
+    let active = true;
+    loadReaderHtml()
+      .then((html) => { if (active) setReaderHtml(html); })
+      .catch(() => {
+        if (active) {
+          setReaderError("No se pudieron cargar los recursos del lector.");
+          setLoading(false);
+        }
+      });
+    return () => { active = false; };
+  }, []);
 
   // Keep screen awake on native
   useEffect(() => {
@@ -434,26 +447,30 @@ export default function ReaderScreen() {
 
       {/* Reader view */}
       <View style={{ flex: 1 }}>
-        {loading && (
+        {loading && !readerError && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, justifyContent: "center", alignItems: "center" }}>
             <ActivityIndicator size="large" color="#007AFF" />
           </View>
         )}
-        {isWeb ? (
+        {readerError ? (
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
+            <Text style={{ color: themeFg, textAlign: "center" }}>{readerError}</Text>
+          </View>
+        ) : readerHtml && isWeb ? (
           <WebIframe
             ref={webViewRef}
             html={readerHtml}
             onMessage={handleWebViewMessage}
             style={{ flex: 1, backgroundColor: themeBg }}
           />
-        ) : (
+        ) : readerHtml ? (
           <NativeWebView
             ref={webViewRef}
             html={readerHtml}
             onMessage={handleWebViewMessage}
             style={{ flex: 1, backgroundColor: themeBg }}
           />
-        )}
+        ) : null}
         {/* Navigation overlays — disabled in quote mode so user can select text */}
         {!loading && !isWeb && !quoteMode && (
           <>
