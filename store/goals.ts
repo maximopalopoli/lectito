@@ -33,7 +33,6 @@ export const useGoalsStore = create<GoalsState>()((set, get) => {
     })
     .catch(() => {
       reportReadError(STORAGE_KEY);
-      set({ _hydrated: true });
     });
 
   return {

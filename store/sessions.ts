@@ -25,16 +25,14 @@ export const useSessionsStore = create<SessionsState>()((set, get) => {
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          set({ sessions: parsed, _hydrated: true });
-          return;
-        }
+        if (!Array.isArray(parsed)) throw new Error('Invalid sessions data');
+        set({ sessions: parsed, _hydrated: true });
+        return;
       }
       set({ _hydrated: true });
     })
     .catch(() => {
       reportReadError(STORAGE_KEY);
-      set({ _hydrated: true });
     });
 
   return {

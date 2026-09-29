@@ -30,16 +30,14 @@ export const useBooksStore = create<BooksState>()((set, get) => {
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          set({ books: parsed, _hydrated: true });
-          return;
-        }
+        if (!Array.isArray(parsed)) throw new Error('Invalid books data');
+        set({ books: parsed, _hydrated: true });
+        return;
       }
       set({ _hydrated: true });
     })
     .catch(() => {
       reportReadError(STORAGE_KEY);
-      set({ _hydrated: true });
     });
 
   return {

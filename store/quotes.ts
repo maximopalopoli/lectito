@@ -33,16 +33,14 @@ export const useQuotesStore = create<QuotesState>()((set, get) => {
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          set({ quotes: parsed, _hydrated: true });
-          return;
-        }
+        if (!Array.isArray(parsed)) throw new Error('Invalid quotes data');
+        set({ quotes: parsed, _hydrated: true });
+        return;
       }
       set({ _hydrated: true });
     })
     .catch(() => {
       reportReadError(STORAGE_KEY);
-      set({ _hydrated: true });
     });
 
   return {

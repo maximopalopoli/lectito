@@ -41,7 +41,6 @@ export const useListsStore = create<ListsState>()((set, get) => {
           new Set(parsed.map((list) => list.id)).size !== parsed.length ||
           new Set(parsed.map((list) => list.name.toLocaleLowerCase())).size !== parsed.length) {
           reportReadError(STORAGE_KEY);
-          set({ _hydrated: true });
           return;
         }
         set({ lists: parsed, _hydrated: true });
@@ -51,7 +50,6 @@ export const useListsStore = create<ListsState>()((set, get) => {
     })
     .catch(() => {
       reportReadError(STORAGE_KEY);
-      set({ _hydrated: true });
     });
 
   return {

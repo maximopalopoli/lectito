@@ -29,7 +29,6 @@ export const useRecommendationsStore = create<RecommendationsState>()((set, get)
     })
     .catch(() => {
       reportReadError(STORAGE_KEY);
-      set({ _hydrated: true });
     });
 
   return {

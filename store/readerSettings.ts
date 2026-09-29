@@ -39,7 +39,7 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           set({
             positions: parsed.positions ?? {},
             settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
@@ -47,12 +47,12 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
           });
           return;
         }
+        throw new Error('Invalid reader settings data');
       }
       set({ _hydrated: true });
     })
     .catch(() => {
       reportReadError(STORAGE_KEY);
-      set({ _hydrated: true });
     });
 
   return {
