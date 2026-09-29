@@ -6,6 +6,7 @@ import { reportReadError, saveJson } from '@/lib/storage';
 import type { Book, BookSearchResult, BookStatus } from '@/types';
 import { useSessionsStore } from './sessions';
 import { useQuotesStore } from './quotes';
+import { useListsStore } from './lists';
 
 const STORAGE_KEY = 'aleph-books';
 
@@ -77,11 +78,12 @@ export const useBooksStore = create<BooksState>()((set, get) => {
       }),
 
     deleteBook: (id) => {
-      if (!get()._hydrated || !useSessionsStore.getState()._hydrated || !useQuotesStore.getState()._hydrated) return;
+      if (!get()._hydrated || !useSessionsStore.getState()._hydrated || !useQuotesStore.getState()._hydrated || !useListsStore.getState()._hydrated) return;
       // Cascade: drop the book's sessions and quotes so no orphan data keeps
       // feeding stats / streaks for a book that no longer exists.
       useSessionsStore.getState().deleteByBook(id);
       useQuotesStore.getState().deleteByBook(id);
+      useListsStore.getState().removeBookFromAll(id);
       set((state) => {
         const books = state.books.filter((b) => b.id !== id);
         saveBooks(books);

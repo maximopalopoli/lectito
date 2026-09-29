@@ -8,9 +8,11 @@ import { useQuotesStore } from '@/store/quotes';
 import { useSessionsStore } from '@/store/sessions';
 import { useGoalsStore } from '@/store/goals';
 import { useReaderSettingsStore, type ReaderData } from '@/store/readerSettings';
+import { useListsStore } from '@/store/lists';
+import { isReadingList } from '@/lib/listValidation';
 import { readEpubAsBase64, restoreEpub } from '@/lib/epubStorage';
 import { flushStorageWrites } from '@/lib/storage';
-import type { Book, Goal, Quote, Session } from '@/types';
+import type { Book, Goal, Quote, ReadingList, Session } from '@/types';
 
 interface BackupData {
   version: number;
@@ -21,6 +23,7 @@ interface BackupData {
   quotes: Quote[];
   reader: ReaderData;
   epubs: Record<string, string>;
+  lists: ReadingList[];
 }
 
 export async function exportBackup(destination: 'share' | 'save' = 'share'): Promise<boolean> {
@@ -29,6 +32,7 @@ export async function exportBackup(destination: 'share' | 'save' = 'share'): Pro
   const sessions = useSessionsStore.getState().sessions;
   const goal = useGoalsStore.getState().goal;
   const quotes = useQuotesStore.getState().quotes;
+  const lists = useListsStore.getState().lists;
   const { positions, settings } = useReaderSettingsStore.getState();
   const epubs: Record<string, string> = {};
   for (const book of books) {
@@ -39,7 +43,7 @@ export async function exportBackup(destination: 'share' | 'save' = 'share'): Pro
 
   const exportedAt = new Date().toISOString();
   const data: BackupData = {
-    version: 2,
+    version: 3,
     exportedAt,
     books,
     sessions,
@@ -47,6 +51,7 @@ export async function exportBackup(destination: 'share' | 'save' = 'share'): Pro
     quotes,
     reader: { positions, settings },
     epubs,
+    lists,
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -127,7 +132,7 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
   const backup = data as Partial<BackupData>;
 
   if (
-    (backup.version !== 1 && backup.version !== 2) ||
+    (backup.version !== 1 && backup.version !== 2 && backup.version !== 3) ||
     !Array.isArray(backup.books) ||
     !Array.isArray(backup.sessions) ||
     !backup.books.every(isValidBook) ||
@@ -138,7 +143,7 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
     throw new Error('El archivo no contiene datos válidos');
   }
 
-  if (backup.version === 2 && (
+  if ((backup.version === 2 || backup.version === 3) && (
     !isRecord(backup.epubs) ||
     !backup.books.every((book) => !book.epubUri || typeof backup.epubs?.[book.id] === 'string') ||
     !isValidReader(backup.reader)
@@ -146,17 +151,22 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
     throw new Error('El backup no contiene todos los ePub o ajustes del lector');
   }
 
+  if (backup.version === 3 && !areValidLists(backup.lists, backup.books!)) {
+    throw new Error('El backup contiene listas inválidas');
+  }
+
   const missingEpubs = backup.version === 1
     ? backup.books.filter((book) => Boolean(book.epubUri)).length
     : 0;
   const books: Book[] = [];
   for (const book of backup.books) {
-    const base64 = backup.version === 2 ? backup.epubs?.[book.id] : undefined;
+    const base64 = backup.version === 1 ? undefined : backup.epubs?.[book.id];
     const epubUri = base64 ? await restoreEpub(book.id, base64) : null;
     books.push({ ...book, epubUri });
   }
 
   useBooksStore.getState().replaceBooks(books);
+  useListsStore.getState().replaceLists(backup.version === 3 ? backup.lists! : []);
   useSessionsStore.getState().replaceSessions(backup.sessions);
 
   if (backup.goal) {
@@ -166,7 +176,7 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
   }
 
   useQuotesStore.getState().replaceQuotes(backup.quotes ?? []);
-  if (backup.version === 2 && backup.reader) {
+  if (backup.version !== 1 && backup.reader) {
     useReaderSettingsStore.getState().replaceReaderData(backup.reader);
   } else {
     useReaderSettingsStore.getState().replaceReaderData({
@@ -181,6 +191,15 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function areValidLists(value: unknown, books: Book[]): value is ReadingList[] {
+  if (!Array.isArray(value) || !value.every(isReadingList)) return false;
+  const bookIds = new Set(books.map((book) => book.id));
+  const listIds = new Set(value.map((list) => list.id));
+  const names = new Set(value.map((list) => list.name.toLocaleLowerCase()));
+  return listIds.size === value.length && names.size === value.length &&
+    value.every((list) => list.bookIds.every((id) => bookIds.has(id)));
 }
 
 function isValidBook(value: unknown): value is Book {

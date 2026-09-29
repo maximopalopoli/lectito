@@ -4,12 +4,12 @@ Aleph is a personal reading app: a private library for tracking reading sessions
 
 ## Current features
 
-- A library with **Want to Read**, **Reading**, **Read**, and **Did Not Finish** shelves. Search by title or author and filter by tags and rating.
+- A library with **Want to Read**, **Reading**, **Read**, and **Did Not Finish** shelves, plus custom lists. Search by title or author and filter by tags and rating.
 - Add books by ISBN or text using Open Library and Google Books, scan barcodes, or import ePub files.
 - Timed reading sessions with pause, focus mode, pages read, and optional notes; per-book progress and session history.
 - Statistics for reading time, sessions, pages, streaks, a heatmap, books per month, and configurable goals.
 - Ratings, reviews, tags, quotes, and highlights; shareable cards without a social network.
-- An ePub reader with themes, typography, saved position, and highlights. JSON backups include books, sessions, quotes, goals, reader settings, and ePub files.
+- An ePub reader with themes, typography, saved position, and highlights. JSON backups include books, custom lists, sessions, quotes, goals, reader settings, and ePub files.
 
 Data is stored on the device. There are no accounts or cross-device sync yet; manual backups can be used to move data. See [ROADMAP.md](ROADMAP.md) for feature status and priorities.
 

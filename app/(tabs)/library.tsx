@@ -233,6 +233,16 @@ export default function LibraryScreen() {
         )}
       </View>
 
+      <Pressable
+        onPress={() => router.push("/lists")}
+        accessibilityRole="button"
+        style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 9, gap: 8 }}
+      >
+        <Ionicons name="albums-outline" size={18} color={colors.primary} />
+        <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "600" }}>Mis listas</Text>
+        <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+      </Pressable>
+
       {hasAnyFilter ? (
         <>
           {/* Search results header */}

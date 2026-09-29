@@ -12,6 +12,7 @@ import { useQuotesStore } from "@/store/quotes";
 import { useGoalsStore } from "@/store/goals";
 import { useReaderSettingsStore } from "@/store/readerSettings";
 import { useRecommendationsStore } from "@/store/recommendations";
+import { useListsStore } from "@/store/lists";
 import { useStorageHealthStore } from "@/lib/storageHealth";
 
 export default function RootLayout() {
@@ -22,11 +23,12 @@ export default function RootLayout() {
   const goalsReady = useGoalsStore((s) => s._hydrated);
   const readerReady = useReaderSettingsStore((s) => s._hydrated);
   const recommendationsReady = useRecommendationsStore((s) => s._hydrated);
+  const listsReady = useListsStore((s) => s._hydrated);
   const readError = useStorageHealthStore((s) => s.readError);
   const writeError = useStorageHealthStore((s) => s.writeError);
   const backgroundColor = scheme === "dark" ? "#111111" : "#ffffff";
   const color = scheme === "dark" ? "#ffffff" : "#111111";
-  const hydrated = booksReady && sessionsReady && quotesReady && goalsReady && readerReady && recommendationsReady;
+  const hydrated = booksReady && sessionsReady && quotesReady && goalsReady && readerReady && recommendationsReady && listsReady;
 
   return (
     <SafeAreaProvider>
@@ -50,6 +52,7 @@ export default function RootLayout() {
           <Stack.Screen name="book/quotes" options={{ headerShown: false }} />
           <Stack.Screen name="book/quote-form" options={{ headerShown: false }} />
           <Stack.Screen name="recommendations" options={{ headerShown: false }} />
+          <Stack.Screen name="lists" options={{ headerShown: false }} />
         </Stack>
         {(readError || !hydrated) && (
           <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor }}>

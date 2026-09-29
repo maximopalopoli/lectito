@@ -10,6 +10,7 @@ import { useSessionsStore } from '@/store/sessions';
 import { useQuotesStore } from '@/store/quotes';
 import { useGoalsStore } from '@/store/goals';
 import { useReaderSettingsStore } from '@/store/readerSettings';
+import { useListsStore } from '@/store/lists';
 
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('expo-file-system/legacy', () => ({
@@ -35,6 +36,7 @@ jest.mock('@/store/sessions', () => ({ useSessionsStore: { getState: jest.fn() }
 jest.mock('@/store/quotes', () => ({ useQuotesStore: { getState: jest.fn() } }));
 jest.mock('@/store/goals', () => ({ useGoalsStore: { getState: jest.fn() } }));
 jest.mock('@/store/readerSettings', () => ({ useReaderSettingsStore: { getState: jest.fn() } }));
+jest.mock('@/store/lists', () => ({ useListsStore: { getState: jest.fn() } }));
 
 const book = {
   id: 'book-1', title: 'Ejemplo', authors: ['Autor'], coverUrl: null,
@@ -46,6 +48,7 @@ const reader = {
   positions: { 'book-1': { cfi: 'epubcfi(/6/2)', updatedAt: '2026-01-01T00:00:00.000Z' } },
   settings: { fontSize: 110, fontFamily: 'serif', theme: 'sepia' },
 };
+const list = { id: 'list-1', name: 'Favoritos', bookIds: ['book-1'], createdAt: '2026-01-01T00:00:00.000Z' };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -65,6 +68,9 @@ beforeEach(() => {
   jest.mocked(useReaderSettingsStore.getState).mockReturnValue({
     ...reader, replaceReaderData: jest.fn(),
   } as never);
+  jest.mocked(useListsStore.getState).mockReturnValue({
+    lists: [list], replaceLists: jest.fn(),
+  } as never);
 });
 
 test('exports an ePub and reader position with the backup', async () => {
@@ -73,9 +79,10 @@ test('exports an ePub and reader position with the backup', async () => {
 
   const json = jest.mocked(FileSystem.writeAsStringAsync).mock.calls[0][1];
   const backup = JSON.parse(json);
-  expect(backup.version).toBe(2);
+  expect(backup.version).toBe(3);
   expect(backup.epubs['book-1']).toBe('ZXB1Yg==');
   expect(backup.reader).toEqual(reader);
+  expect(backup.lists).toEqual([list]);
   expect(Sharing.shareAsync).toHaveBeenCalled();
 });
 
@@ -138,6 +145,35 @@ test('restores ePub under a new URI and restores reader position', async () => {
     { ...book, epubUri: 'file:///new.epub' },
   ]);
   expect(useReaderSettingsStore.getState().replaceReaderData).toHaveBeenCalledWith(reader);
+  expect(useListsStore.getState().replaceLists).toHaveBeenCalledWith([]);
+});
+
+test('restores custom lists from a v3 backup', async () => {
+  jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+    canceled: false, assets: [{ uri: 'file:///backup.json' }],
+  } as never);
+  jest.mocked(FileSystem.readAsStringAsync).mockResolvedValue(JSON.stringify({
+    version: 3, exportedAt: '2026-01-01T00:00:00.000Z', books: [book],
+    sessions: [], goal: null, quotes: [], reader, epubs: { 'book-1': 'ZXB1Yg==' }, lists: [list],
+  }));
+  jest.mocked(restoreEpub).mockResolvedValue('file:///new.epub');
+
+  await importBackup();
+
+  expect(useListsStore.getState().replaceLists).toHaveBeenCalledWith([list]);
+});
+
+test('rejects a list that references a book missing from the backup', async () => {
+  jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+    canceled: false, assets: [{ uri: 'file:///backup.json' }],
+  } as never);
+  jest.mocked(FileSystem.readAsStringAsync).mockResolvedValue(JSON.stringify({
+    version: 3, books: [book], sessions: [], goal: null, quotes: [], reader,
+    epubs: { 'book-1': 'ZXB1Yg==' }, lists: [{ ...list, bookIds: ['missing-book'] }],
+  }));
+
+  await expect(importBackup()).rejects.toThrow('listas inválidas');
+  expect(useBooksStore.getState().replaceBooks).not.toHaveBeenCalled();
 });
 
 test('rejects an incomplete backup before replacing local data', async () => {
