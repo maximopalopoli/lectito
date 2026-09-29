@@ -46,6 +46,10 @@ export async function readEpubAsBase64(uri: string): Promise<string> {
   }
 
   const FileSystem = await import('expo-file-system/legacy');
+  const info = await FileSystem.getInfoAsync(uri);
+  if (!info.exists) {
+    throw new Error('El archivo ePub ya no está en este dispositivo. Volvé a importarlo o restaurá un backup.');
+  }
   return FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
