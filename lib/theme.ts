@@ -26,9 +26,10 @@ export const lightColors = {
   // Marca / semántico
   primary: "#0066CC",
   primaryTint: "#EBF2FF",
-  success: "#34C759",
-  warning: "#FF9500",
-  danger: "#FF3B30",
+  // Variantes "accesibles" de iOS: contraste suficiente como texto sobre blanco.
+  success: "#248A3D",
+  warning: "#B85C00",
+  danger: "#D70015",
   dangerStrong: "#c00",
   accent: "#8B5CF6",
 

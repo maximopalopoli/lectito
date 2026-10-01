@@ -10,7 +10,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { usePreventRemove } from "@react-navigation/native";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,6 +59,7 @@ function confirmThen(title: string, message: string, confirmText: string, onConf
 export default function SessionScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const colors = useTheme();
   const books = useBooksStore((s) => s.books);
@@ -148,18 +150,17 @@ export default function SessionScreen() {
     if (router.canGoBack()) router.back(); else router.replace("/");
   };
 
-  const handleBack = () => {
-    if (status === "IDLE" || elapsedSeconds < 60) {
-      leave();
-      return;
-    }
+  // Con el timer en curso (y más de un minuto contado), confirmar antes de salir.
+  // Cubre la flecha del header, el botón atrás de Android y los gestos.
+  const timing = status === "RUNNING" || status === "PAUSED";
+  usePreventRemove(timing && elapsedSeconds >= 60, ({ data }) => {
     confirmThen(
       "¿Salir sin guardar?",
       `Vas a perder ${formatDuration(elapsedSeconds)} de lectura.`,
       "Salir",
-      leave,
+      () => navigation.dispatch(data.action),
     );
-  };
+  });
 
   if (!book) {
     return (
@@ -218,7 +219,7 @@ export default function SessionScreen() {
     >
       {status !== "STOPPED" ? (
         <>
-          <ScreenHeader title="Sesión de lectura" onBack={handleBack} />
+          <ScreenHeader title="Sesión de lectura" onBack={leave} />
 
           {/* Book info */}
           <View

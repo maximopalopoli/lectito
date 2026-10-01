@@ -17,7 +17,7 @@ interface HeatmapProps {
 export default function Heatmap({ data }: HeatmapProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const colors = useTheme();
-  const levelColors = [colors.surfaceAlt, "#9be9a8", "#40c463", "#30a14e"];
+  const levelColors = [colors.track, "#9be9a8", "#40c463", "#30a14e"];
 
   if (data.length === 0) return null;
 

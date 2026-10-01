@@ -45,6 +45,8 @@ export default function HomeScreen() {
   }, [books, sessions]);
 
   const [current, ...others] = readingBooks;
+  // Primer uso: sin libros ni sesiones no tiene sentido mostrar el resumen de hoy en cero.
+  const isNewUser = books.length === 0 && sessions.length === 0;
   const todayLabel = new Date().toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
@@ -98,56 +100,58 @@ export default function HomeScreen() {
       </View>
 
       {/* Hoy: objetivo + resumen compacto */}
-      <View
-        style={{
-          backgroundColor: colors.surface,
-          borderRadius: radius.xl,
-          padding: spacing.lg,
-          marginBottom: spacing.xl,
-        }}
-      >
-        {goal && goalProgress && (
-          <View style={{ marginBottom: spacing.md }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                marginBottom: spacing.sm,
-              }}
-            >
-              <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary }}>
-                Objetivo {goal.period === "daily" ? "de hoy" : "de la semana"}
-              </Text>
-              <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>
-                {goalProgress.current}/{goalProgress.target}{" "}
-                {goal.metric === "minutes" ? "min" : "pág"}
-              </Text>
-            </View>
-            <View style={{ height: 6, backgroundColor: colors.track, borderRadius: 3 }}>
+      {!isNewUser && (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: radius.xl,
+            padding: spacing.lg,
+            marginBottom: spacing.xl,
+          }}
+        >
+          {goal && goalProgress && (
+            <View style={{ marginBottom: spacing.md }}>
               <View
                 style={{
-                  height: 6,
-                  backgroundColor:
-                    goalProgress.percentage >= 100 ? colors.success : colors.primary,
-                  borderRadius: 3,
-                  width: `${Math.min(goalProgress.percentage, 100)}%`,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  marginBottom: spacing.sm,
                 }}
-              />
+              >
+                <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary }}>
+                  Objetivo {goal.period === "daily" ? "de hoy" : "de la semana"}
+                </Text>
+                <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>
+                  {goalProgress.current}/{goalProgress.target}{" "}
+                  {goal.metric === "minutes" ? "min" : "pág"}
+                </Text>
+              </View>
+              <View style={{ height: 6, backgroundColor: colors.track, borderRadius: 3 }}>
+                <View
+                  style={{
+                    height: 6,
+                    backgroundColor:
+                      goalProgress.percentage >= 100 ? colors.success : colors.primary,
+                    borderRadius: 3,
+                    width: `${Math.min(goalProgress.percentage, 100)}%`,
+                  }}
+                />
+              </View>
             </View>
+          )}
+          <View style={{ flexDirection: "row" }}>
+            <InlineStat icon="time-outline" value={todayStats.minutes} label="min hoy" color={colors.primary} />
+            <InlineStat icon="document-text-outline" value={todayStats.pages} label="pág hoy" color={colors.primary} />
+            <InlineStat
+              icon="flame"
+              value={streak}
+              label={streak === 1 ? "día de racha" : "días de racha"}
+              color={colors.warning}
+            />
           </View>
-        )}
-        <View style={{ flexDirection: "row" }}>
-          <InlineStat icon="time-outline" value={todayStats.minutes} label="min hoy" color={colors.primary} />
-          <InlineStat icon="document-text-outline" value={todayStats.pages} label="pág hoy" color={colors.primary} />
-          <InlineStat
-            icon="flame"
-            value={streak}
-            label={streak === 1 ? "día de racha" : "días de racha"}
-            color={colors.warning}
-          />
         </View>
-      </View>
+      )}
 
       {current ? (
         <>
@@ -183,7 +187,7 @@ export default function HomeScreen() {
           }}
         >
           <Ionicons
-            name="book-outline"
+            name={isNewUser ? "library-outline" : "book-outline"}
             size={48}
             color={colors.icon}
             style={{ marginBottom: spacing.md }}
@@ -196,7 +200,7 @@ export default function HomeScreen() {
               marginBottom: spacing.xs,
             }}
           >
-            No estás leyendo nada
+            {isNewUser ? "Empezá tu biblioteca" : "No estás leyendo nada"}
           </Text>
           <Text
             style={{
@@ -206,11 +210,14 @@ export default function HomeScreen() {
               marginBottom: spacing.lg,
             }}
           >
-            {"Marcá un libro como \"Leyendo\" para empezar a registrar sesiones."}
+            {isNewUser
+              ? "Agregá el libro que estás leyendo y registrá cada sesión para seguir tu progreso."
+              : "Marcá un libro como \"Leyendo\" para empezar a registrar sesiones."}
           </Text>
           <AnimatedPressable
-            onPress={() => router.push("/book/add")}
+            onPress={() => router.push(isNewUser ? "/book/add" : "/library")}
             haptic="medium"
+            accessibilityRole="button"
             style={{
               backgroundColor: colors.primary,
               borderRadius: radius.lg,
@@ -219,9 +226,22 @@ export default function HomeScreen() {
             }}
           >
             <Text style={{ color: colors.onPrimary, fontSize: fontSize.base, fontWeight: fontWeight.semibold }}>
-              Agregar libro
+              {isNewUser ? "Agregar mi primer libro" : "Ir a mi biblioteca"}
             </Text>
           </AnimatedPressable>
+          {isNewUser && (
+            <AnimatedPressable
+              onPress={() => router.push("/settings/backup")}
+              haptic="light"
+              scaleDown={0.97}
+              accessibilityRole="button"
+              style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.lg, marginTop: spacing.sm }}
+            >
+              <Text style={{ color: colors.primary, fontSize: fontSize.md, fontWeight: fontWeight.semibold }}>
+                Restaurar un backup
+              </Text>
+            </AnimatedPressable>
+          )}
         </View>
       )}
     </ScrollView>

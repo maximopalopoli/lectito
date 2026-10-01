@@ -63,34 +63,46 @@ export default function StatsScreen() {
         style={{
           flex: 1,
           backgroundColor: colors.background,
-          justifyContent: "center",
-          alignItems: "center",
-          paddingHorizontal: 32,
+          paddingTop: insets.top + spacing.xl,
+          paddingHorizontal: 16,
         }}
       >
-        <Ionicons
-          name="stats-chart-outline"
-          size={56}
-          color={colors.icon}
-          style={{ marginBottom: 16 }}
-        />
-        <Text style={{ fontSize: 18, fontWeight: "600", color: colors.textSecondary, marginBottom: 6 }}>
-          Sin datos todavía
-        </Text>
-        <Text style={{ fontSize: 14, color: colors.textTertiary, textAlign: "center" }}>
-          {books.length > 0
-            ? "Completá tu primera sesión de lectura para ver tus estadísticas acá."
-            : "Agregá un libro y completá tu primera sesión para ver tus estadísticas acá."}
-        </Text>
-        <AnimatedPressable
-          onPress={() => router.push(books.length > 0 ? "/library" : "/book/add")}
-          accessibilityRole="button"
-          style={{ backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 14, marginTop: 20 }}
-        >
-          <Text style={{ color: colors.onPrimary, fontSize: 15, fontWeight: "600" }}>
-            {books.length > 0 ? "Ir a mi biblioteca" : "Agregar libro"}
+        {/* Sin compartir (no hay nada que mostrar), pero el backup sigue a mano para restaurar. */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>
+            Estadísticas
           </Text>
-        </AnimatedPressable>
+          <CircleIconButton
+            icon="cloud-upload-outline"
+            label="Backup de datos"
+            onPress={() => router.push("/settings/backup")}
+          />
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 16, paddingBottom: 60 }}>
+          <Ionicons
+            name="stats-chart-outline"
+            size={56}
+            color={colors.icon}
+            style={{ marginBottom: 16 }}
+          />
+          <Text style={{ fontSize: 18, fontWeight: "600", color: colors.textSecondary, marginBottom: 6 }}>
+            Sin datos todavía
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.textTertiary, textAlign: "center" }}>
+            {books.length > 0
+              ? "Completá tu primera sesión de lectura para ver tus estadísticas acá."
+              : "Agregá un libro y completá tu primera sesión para ver tus estadísticas acá."}
+          </Text>
+          <AnimatedPressable
+            onPress={() => router.push(books.length > 0 ? "/library" : "/book/add")}
+            accessibilityRole="button"
+            style={{ backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 14, marginTop: 20 }}
+          >
+            <Text style={{ color: colors.onPrimary, fontSize: 15, fontWeight: "600" }}>
+              {books.length > 0 ? "Ir a mi biblioteca" : "Agregar libro"}
+            </Text>
+          </AnimatedPressable>
+        </View>
       </View>
     );
   }
