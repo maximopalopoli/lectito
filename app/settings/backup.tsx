@@ -125,7 +125,8 @@ export default function BackupScreen() {
             </Text>
           </View>
           <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16 }}>
-            Genera un archivo JSON con tus libros, ePub, sesiones, citas y ajustes.
+            Genera un archivo JSON con tus libros, ePub, sesiones, citas y ajustes. El archivo no
+            está cifrado: guardalo en un lugar seguro y no lo compartas si tiene notas privadas.
           </Text>
           <AnimatedPressable
             accessibilityRole="button"

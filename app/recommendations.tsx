@@ -290,7 +290,8 @@ export default function RecommendationsScreen() {
                   lineHeight: 18,
                 }}
               >
-                Elegí los libros en base a los cuales querés que se generen las recomendaciones.
+                Elegí los libros en base a los cuales querés que se generen las recomendaciones. Para
+                armarlas se consultan en Open Library el ISBN y los autores de esos libros.
               </Text>
               <FlatList
                 data={eligibleBooks}

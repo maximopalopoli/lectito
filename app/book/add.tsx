@@ -266,6 +266,12 @@ export default function AddBookScreen() {
           </AnimatedPressable>
         </View>
 
+        {idle && (
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: spacing.sm }}>
+            Al buscar o escanear, lo que escribís o el ISBN se consulta en Open Library y Google Books.
+          </Text>
+        )}
+
         {/* Other ways to add (only before any search) */}
         {idle && (
           <View style={{ marginTop: spacing.xl }}>
