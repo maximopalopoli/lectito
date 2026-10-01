@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { randomUUID } from 'expo-crypto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { reportReadError, saveJson } from '@/lib/storage';
+import { loadStored, reportReadError, saveJson } from '@/lib/storage';
 import { isReadingList } from '@/lib/listValidation';
 import type { ReadingList } from '@/types';
 
@@ -33,7 +32,7 @@ function saveLists(lists: ReadingList[]): void {
 }
 
 export const useListsStore = create<ListsState>()((set, get) => {
-  AsyncStorage.getItem(LISTS_STORAGE_KEY)
+  loadStored(LISTS_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed: unknown = JSON.parse(raw);

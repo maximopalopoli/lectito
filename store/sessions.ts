@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { randomUUID } from 'expo-crypto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { reportReadError, saveJson } from '@/lib/storage';
+import { loadStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { Session } from '@/types';
 
@@ -21,7 +20,7 @@ export interface SessionsState {
 }
 
 export const useSessionsStore = create<SessionsState>()((set, get) => {
-  AsyncStorage.getItem(SESSIONS_STORAGE_KEY)
+  loadStored(SESSIONS_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);

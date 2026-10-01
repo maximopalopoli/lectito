@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { removeStored, reportReadError, saveJson } from '@/lib/storage';
+import { loadStored, removeStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { Goal } from '@/types';
 
@@ -26,7 +25,7 @@ export interface GoalsState {
 }
 
 export const useGoalsStore = create<GoalsState>()((set, get) => {
-  AsyncStorage.getItem(GOAL_STORAGE_KEY)
+  loadStored(GOAL_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -39,7 +38,7 @@ export const useGoalsStore = create<GoalsState>()((set, get) => {
       reportReadError(GOAL_STORAGE_KEY);
     });
 
-  AsyncStorage.getItem(SUGGESTION_KEY)
+  loadStored(SUGGESTION_KEY)
     .then((raw) => {
       if (raw) set({ suggestionDismissed: true });
     })

@@ -7,7 +7,9 @@ import { reportReadError, saveJson } from '@/lib/storage';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn().mockResolvedValue(null) }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
-jest.mock('@/lib/storage', () => ({ saveJson: jest.fn().mockResolvedValue(undefined), reportReadError: jest.fn() }));
+jest.mock('@/lib/storage', () => ({
+  loadStored: (key: string) => jest.requireMock('@react-native-async-storage/async-storage').getItem(key),
+  saveJson: jest.fn().mockResolvedValue(undefined), reportReadError: jest.fn() }));
 jest.mock('../lists', () => ({ useListsStore: { getState: jest.fn() } }));
 jest.mock('../sessions', () => ({ useSessionsStore: { getState: jest.fn() } }));
 jest.mock('../quotes', () => ({ useQuotesStore: { getState: jest.fn() } }));

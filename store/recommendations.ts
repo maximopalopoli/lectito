@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { reportReadError, saveJson } from '@/lib/storage';
+import { loadStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { RecommendationsCache } from '@/types';
 
@@ -18,7 +17,7 @@ export interface RecommendationsState {
 }
 
 export const useRecommendationsStore = create<RecommendationsState>()((set, get) => {
-  AsyncStorage.getItem(STORAGE_KEY)
+  loadStored(STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed: RecommendationsCache = JSON.parse(raw);

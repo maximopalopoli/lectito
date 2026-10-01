@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { randomUUID } from 'expo-crypto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { reportReadError, saveJson } from '@/lib/storage';
+import { loadStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { Book, BookSearchResult, BookStatus } from '@/types';
 import { useSessionsStore } from './sessions';
@@ -34,7 +33,7 @@ export interface BooksState {
 
 export const useBooksStore = create<BooksState>()((set, get) => {
   // Hydrate asynchronously
-  AsyncStorage.getItem(BOOKS_STORAGE_KEY)
+  loadStored(BOOKS_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);

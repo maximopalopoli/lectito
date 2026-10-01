@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { reportReadError, saveJson } from '@/lib/storage';
+import { loadStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { ReaderPosition, ReaderTheme } from '@/types';
 
@@ -35,7 +35,7 @@ export interface ReaderSettingsState {
 }
 
 export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) => {
-  AsyncStorage.getItem(READER_STORAGE_KEY)
+  loadStored(READER_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);

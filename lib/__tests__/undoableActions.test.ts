@@ -7,7 +7,7 @@ import { useSessionsStore } from '@/store/sessions';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn().mockResolvedValue(null) }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
-jest.mock('@/lib/storage', () => ({ saveJson: jest.fn().mockResolvedValue(undefined), reportReadError: jest.fn() }));
+jest.mock('@/lib/storage', () => ({ loadStored: jest.fn().mockResolvedValue(null), saveJson: jest.fn().mockResolvedValue(undefined), reportReadError: jest.fn() }));
 
 const book = { id: 'b1', title: 'Meditaciones', status: 'READING', completedAt: null } as never;
 const other = { id: 'b2', title: 'Otro', status: 'TBR', completedAt: null } as never;

@@ -3,7 +3,9 @@ import { saveJson } from '@/lib/storage';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn().mockResolvedValue(null) }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn().mockReturnValue('list-new') }));
-jest.mock('@/lib/storage', () => ({ saveJson: jest.fn().mockResolvedValue(undefined), reportReadError: jest.fn() }));
+jest.mock('@/lib/storage', () => ({
+  loadStored: (key: string) => jest.requireMock('@react-native-async-storage/async-storage').getItem(key),
+  saveJson: jest.fn().mockResolvedValue(undefined), reportReadError: jest.fn() }));
 
 const first = { id: 'list-1', name: 'Favoritos', bookIds: ['book-1', 'book-2'], createdAt: '2026-01-01' };
 const second = { id: 'list-2', name: 'Pendientes', bookIds: ['book-1'], createdAt: '2026-01-02' };

@@ -1,7 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { migrateStorage } from './migrations';
 import { useStorageHealthStore } from './storageHealth';
 
 const pendingWrites = new Map<string, Promise<void>>();
+let migrated: Promise<void> | null = null;
+
+/** Read a stored value once local data has been migrated to the current schema. */
+export function loadStored(key: string): Promise<string | null> {
+  migrated ??= migrateStorage();
+  return migrated.then(() => AsyncStorage.getItem(key));
+}
 
 export async function flushStorageWrites(): Promise<void> {
   await Promise.all([...pendingWrites.values()]);

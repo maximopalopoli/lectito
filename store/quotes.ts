@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { randomUUID } from 'expo-crypto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { reportReadError, saveJson } from '@/lib/storage';
+import { loadStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { Quote, QuoteColor } from '@/types';
 
@@ -29,7 +28,7 @@ export interface QuotesState {
 }
 
 export const useQuotesStore = create<QuotesState>()((set, get) => {
-  AsyncStorage.getItem(QUOTES_STORAGE_KEY)
+  loadStored(QUOTES_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);

@@ -3,10 +3,10 @@ import { saveJsonMany } from '../storage';
 import { useBooksStore } from '@/store/books';
 import { useSessionsStore } from '@/store/sessions';
 
-jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn().mockResolvedValue(null) }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'session-1') }));
 jest.mock('../storage', () => ({
   saveJsonMany: jest.fn().mockResolvedValue(undefined),
+  loadStored: jest.fn().mockResolvedValue(null),
   saveJson: jest.fn().mockResolvedValue(undefined),
   reportReadError: jest.fn(),
 }));
