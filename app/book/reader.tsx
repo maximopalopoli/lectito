@@ -27,7 +27,7 @@ import { recordSession } from "@/lib/recordSession";
 import { EpubUnavailableError, persistEpub, readEpubAsBase64 } from "@/lib/epubStorage";
 import { pickDocument } from "@/lib/pickDocument";
 import { getBundledReaderHtml } from "@/lib/readerAssets";
-import { estimatePages, updatePageSample, type PageSample } from "@/lib/readerPages";
+import { addPageSample, charsPerPage, estimatePages, type PageSamples } from "@/lib/readerPages";
 import { darkColors, lightColors } from "@/lib/theme";
 import type { QuoteColor, ReaderThemeName } from "@/types";
 
@@ -138,7 +138,7 @@ export default function ReaderScreen() {
   // page/total: páginas de pantalla del libro con la letra actual (0 mientras no se pueden estimar).
   const [pageInfo, setPageInfo] = useState({ page: 0, total: 0, percent: 0, chapter: "", location: 0 });
   const totalLocationsRef = useRef(0);
-  const pageSampleRef = useRef<PageSample | null>(null);
+  const pageSamplesRef = useRef<PageSamples>({});
 
   // Highlight state
   const [selectedText, setSelectedText] = useState("");
@@ -180,7 +180,7 @@ export default function ReaderScreen() {
 
   // Otra letra o tipografía cambia cuánto texto entra por página: se vuelve a medir.
   useEffect(() => {
-    pageSampleRef.current = null;
+    pageSamplesRef.current = {};
   }, [readerSettings.fontSize, readerSettings.fontFamily]);
 
   // Keep screen awake on native
@@ -367,8 +367,10 @@ export default function ReaderScreen() {
 
       case "relocated":
         if (msg.rawPercent < 0) break; // locations not ready yet
-        pageSampleRef.current = updatePageSample(pageSampleRef.current, msg.chapterChars ?? 0, msg.total ?? 0);
-        const pages = estimatePages(msg.rawPercent ?? 0, totalLocationsRef.current, pageSampleRef.current);
+        if (typeof msg.sectionIndex === "number") {
+          pageSamplesRef.current = addPageSample(pageSamplesRef.current, msg.sectionIndex, msg.chapterChars ?? 0, msg.total ?? 0);
+        }
+        const pages = estimatePages(msg.rawPercent ?? 0, totalLocationsRef.current, charsPerPage(pageSamplesRef.current));
         setPageInfo({
           page: pages?.page ?? 0,
           total: pages?.total ?? 0,
@@ -402,6 +404,10 @@ export default function ReaderScreen() {
       case "nav":
         if (msg.direction === "next") netPagesRef.current += 1;
         else if (msg.direction === "prev") netPagesRef.current -= 1;
+        break;
+
+      case "layoutChanged":
+        pageSamplesRef.current = {};
         break;
 
       case "tap":

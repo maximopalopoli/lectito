@@ -75,6 +75,12 @@ ${READER_GESTURES_JS}
     }
   }
 
+  // Otro tamaño del visor (rotar, redimensionar la ventana en web) cambia cuánto entra por página.
+  window.addEventListener('resize', function() {
+    send({ type: 'layoutChanged' });
+    scheduleReport();
+  });
+
   document.addEventListener('message', onMessage);
   window.addEventListener('message', onMessage);
 
@@ -259,6 +265,7 @@ ${READER_GESTURES_JS}
       cfi: location.start.cfi,
       page: page,
       total: total,
+      sectionIndex: location.start.index,
       chapterChars: chapterChars(location.start.index),
       rawPercent: percent,
       percent: Math.round(percent * 100),
