@@ -4,14 +4,14 @@ import { removeStored, reportReadError, saveJson } from '@/lib/storage';
 
 import type { Goal } from '@/types';
 
-const STORAGE_KEY = 'aleph-goal';
+export const GOAL_STORAGE_KEY = 'aleph-goal';
 const SUGGESTION_KEY = 'aleph-goal-suggestion-dismissed';
 
 function saveGoal(goal: Goal | null) {
   if (goal) {
-    void saveJson(STORAGE_KEY, goal);
+    void saveJson(GOAL_STORAGE_KEY, goal);
   } else {
-    void removeStored(STORAGE_KEY);
+    void removeStored(GOAL_STORAGE_KEY);
   }
 }
 
@@ -26,7 +26,7 @@ export interface GoalsState {
 }
 
 export const useGoalsStore = create<GoalsState>()((set, get) => {
-  AsyncStorage.getItem(STORAGE_KEY)
+  AsyncStorage.getItem(GOAL_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -36,7 +36,7 @@ export const useGoalsStore = create<GoalsState>()((set, get) => {
       }
     })
     .catch(() => {
-      reportReadError(STORAGE_KEY);
+      reportReadError(GOAL_STORAGE_KEY);
     });
 
   AsyncStorage.getItem(SUGGESTION_KEY)

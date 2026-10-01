@@ -15,19 +15,35 @@ export function removeStored(key: string): Promise<void> {
   return enqueue(key, () => AsyncStorage.removeItem(key));
 }
 
+/**
+ * Save several keys in one AsyncStorage.multiSet call so related data is not
+ * left half-written: Android commits it in a single SQLite transaction and iOS
+ * updates its manifest once.
+ */
+export function saveJsonMany(entries: Record<string, unknown>): Promise<void> {
+  const pairs = Object.entries(entries).map(([key, value]): [string, string] => [key, JSON.stringify(value)]);
+  return enqueueAll(pairs.map(([key]) => key), () => AsyncStorage.multiSet(pairs));
+}
+
 function enqueue(key: string, action: () => Promise<void>): Promise<void> {
-  const previous = pendingWrites.get(key) ?? Promise.resolve();
-  const next = previous.catch(() => {}).then(action);
-  pendingWrites.set(key, next);
-  void next.then(
-    () => {
-      if (pendingWrites.get(key) === next) {
-        pendingWrites.delete(key);
-        useStorageHealthStore.getState().clearWriteError(key);
-      }
-    },
-    () => useStorageHealthStore.getState().reportWriteError(key),
-  );
+  return enqueueAll([key], action);
+}
+
+function enqueueAll(keys: string[], action: () => Promise<void>): Promise<void> {
+  const previous = keys.map((key) => (pendingWrites.get(key) ?? Promise.resolve()).catch(() => {}));
+  const next = (previous.length === 1 ? previous[0] : Promise.all(previous)).then(action);
+  for (const key of keys) {
+    pendingWrites.set(key, next);
+    void next.then(
+      () => {
+        if (pendingWrites.get(key) === next) {
+          pendingWrites.delete(key);
+          useStorageHealthStore.getState().clearWriteError(key);
+        }
+      },
+      () => useStorageHealthStore.getState().reportWriteError(key),
+    );
+  }
   return next;
 }
 

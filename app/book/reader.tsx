@@ -22,6 +22,7 @@ import { useSessionsStore } from "@/store/sessions";
 import { useQuotesStore } from "@/store/quotes";
 import { useReaderSettingsStore } from "@/store/readerSettings";
 import { confirmThen } from "@/lib/confirm";
+import { recordSession } from "@/lib/recordSession";
 import { readEpubAsBase64 } from "@/lib/epubStorage";
 import { getBundledReaderHtml } from "@/lib/readerAssets";
 import { darkColors, lightColors } from "@/lib/theme";
@@ -110,8 +111,6 @@ export default function ReaderScreen() {
   const booksHydrated = useBooksStore((s) => s._hydrated);
   const sessionsHydrated = useSessionsStore((s) => s._hydrated);
   const updateBook = useBooksStore((s) => s.updateBook);
-  const changeStatus = useBooksStore((s) => s.changeStatus);
-  const addSession = useSessionsStore((s) => s.addSession);
   const addQuote = useQuotesStore((s) => s.addQuote);
   const allQuotes = useQuotesStore((s) => s.quotes);
   const existingQuotes = useMemo(
@@ -206,25 +205,23 @@ export default function ReaderScreen() {
 
     const pagesRead = Math.max(0, netPagesRef.current);
 
-    addSession({
-      bookId,
-      startedAt: startedAtRef.current,
-      endedAt: sessionEndedAtRef.current ?? new Date().toISOString(),
-      durationMin,
-      pagesRead,
-      note: note.trim() || null,
-    });
-
     // Recién al guardar una sesión el libro pasa a "Leyendo" (abrirlo para mirar no cuenta).
-    if (book.status === "TBR") changeStatus(book.id, "READING");
-
-    // Update currentPage based on reading percentage
-    if (book && finalPercentRef.current > 0) {
-      const currentPage = Math.round(finalPercentRef.current * book.pageCount);
-      updateBook(bookId, { currentPage });
-    }
-    return true;
-  }, [bookId, book, booksHydrated, sessionsHydrated, addSession, updateBook, changeStatus]);
+    // currentPage se deriva del porcentaje leído.
+    return recordSession(
+      {
+        bookId,
+        startedAt: startedAtRef.current,
+        endedAt: sessionEndedAtRef.current ?? new Date().toISOString(),
+        durationMin,
+        pagesRead,
+        note: note.trim() || null,
+      },
+      {
+        currentPage: finalPercentRef.current > 0 ? Math.round(finalPercentRef.current * book.pageCount) : undefined,
+        status: book.status === "TBR" ? "READING" : undefined,
+      },
+    );
+  }, [bookId, book, booksHydrated, sessionsHydrated]);
 
   const openSessionSummary = useCallback(() => {
     if (sessionEndedAtRef.current) return;

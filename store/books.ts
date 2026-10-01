@@ -8,10 +8,18 @@ import { useSessionsStore } from './sessions';
 import { useQuotesStore } from './quotes';
 import { useListsStore } from './lists';
 
-const STORAGE_KEY = 'aleph-books';
+export const BOOKS_STORAGE_KEY = 'aleph-books';
 
 function saveBooks(books: Book[]) {
-  void saveJson(STORAGE_KEY, books);
+  void saveJson(BOOKS_STORAGE_KEY, books);
+}
+
+export function withStatus(book: Book, status: BookStatus): Book {
+  return {
+    ...book,
+    status,
+    completedAt: status === 'DONE' ? new Date().toISOString() : null,
+  };
 }
 
 export interface BooksState {
@@ -26,7 +34,7 @@ export interface BooksState {
 
 export const useBooksStore = create<BooksState>()((set, get) => {
   // Hydrate asynchronously
-  AsyncStorage.getItem(STORAGE_KEY)
+  AsyncStorage.getItem(BOOKS_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -37,7 +45,7 @@ export const useBooksStore = create<BooksState>()((set, get) => {
       set({ _hydrated: true });
     })
     .catch(() => {
-      reportReadError(STORAGE_KEY);
+      reportReadError(BOOKS_STORAGE_KEY);
     });
 
   return {
@@ -92,15 +100,7 @@ export const useBooksStore = create<BooksState>()((set, get) => {
     changeStatus: (id, status) =>
       set((state) => {
         if (!state._hydrated) return state;
-        const books = state.books.map((b) =>
-          b.id === id
-            ? {
-                ...b,
-                status,
-                completedAt: status === 'DONE' ? new Date().toISOString() : null,
-              }
-            : b,
-        );
+        const books = state.books.map((b) => (b.id === id ? withStatus(b, status) : b));
         saveBooks(books);
         return { books };
       }),

@@ -11,6 +11,7 @@ import { useQuotesStore } from '@/store/quotes';
 import { useGoalsStore } from '@/store/goals';
 import { useReaderSettingsStore } from '@/store/readerSettings';
 import { useListsStore } from '@/store/lists';
+import { saveJsonMany } from '../storage';
 
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('expo-file-system/legacy', () => ({
@@ -30,13 +31,34 @@ jest.mock('../epubStorage', () => ({
   readEpubAsBase64: jest.fn(),
   restoreEpub: jest.fn(),
 }));
-jest.mock('../storage', () => ({ flushStorageWrites: jest.fn().mockResolvedValue(undefined) }));
-jest.mock('@/store/books', () => ({ useBooksStore: { getState: jest.fn() } }));
-jest.mock('@/store/sessions', () => ({ useSessionsStore: { getState: jest.fn() } }));
-jest.mock('@/store/quotes', () => ({ useQuotesStore: { getState: jest.fn() } }));
-jest.mock('@/store/goals', () => ({ useGoalsStore: { getState: jest.fn() } }));
-jest.mock('@/store/readerSettings', () => ({ useReaderSettingsStore: { getState: jest.fn() } }));
-jest.mock('@/store/lists', () => ({ useListsStore: { getState: jest.fn() } }));
+jest.mock('../storage', () => ({
+  flushStorageWrites: jest.fn().mockResolvedValue(undefined),
+  saveJsonMany: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('@/store/books', () => ({
+  BOOKS_STORAGE_KEY: 'aleph-books',
+  useBooksStore: { getState: jest.fn(), setState: jest.fn() },
+}));
+jest.mock('@/store/sessions', () => ({
+  SESSIONS_STORAGE_KEY: 'aleph-sessions',
+  useSessionsStore: { getState: jest.fn(), setState: jest.fn() },
+}));
+jest.mock('@/store/quotes', () => ({
+  QUOTES_STORAGE_KEY: 'aleph-quotes',
+  useQuotesStore: { getState: jest.fn(), setState: jest.fn() },
+}));
+jest.mock('@/store/goals', () => ({
+  GOAL_STORAGE_KEY: 'aleph-goals',
+  useGoalsStore: { getState: jest.fn(), setState: jest.fn() },
+}));
+jest.mock('@/store/readerSettings', () => ({
+  READER_STORAGE_KEY: 'aleph-readerSettings',
+  useReaderSettingsStore: { getState: jest.fn(), setState: jest.fn() },
+}));
+jest.mock('@/store/lists', () => ({
+  LISTS_STORAGE_KEY: 'aleph-lists',
+  useListsStore: { getState: jest.fn(), setState: jest.fn() },
+}));
 
 const book = {
   id: 'book-1', title: 'Ejemplo', authors: ['Autor'], coverUrl: null,
@@ -54,22 +76,22 @@ beforeEach(() => {
   jest.clearAllMocks();
   Platform.OS = 'ios';
   jest.mocked(useBooksStore.getState).mockReturnValue({
-    books: [book], replaceBooks: jest.fn(),
+    _hydrated: true, books: [book], replaceBooks: jest.fn(),
   } as never);
   jest.mocked(useSessionsStore.getState).mockReturnValue({
-    sessions: [], replaceSessions: jest.fn(),
+    _hydrated: true, sessions: [], replaceSessions: jest.fn(),
   } as never);
   jest.mocked(useQuotesStore.getState).mockReturnValue({
-    quotes: [], replaceQuotes: jest.fn(),
+    _hydrated: true, quotes: [], replaceQuotes: jest.fn(),
   } as never);
   jest.mocked(useGoalsStore.getState).mockReturnValue({
-    goal: null, setGoal: jest.fn(), clearGoal: jest.fn(),
+    _hydrated: true, goal: null, setGoal: jest.fn(), clearGoal: jest.fn(),
   } as never);
   jest.mocked(useReaderSettingsStore.getState).mockReturnValue({
-    ...reader, replaceReaderData: jest.fn(),
+    _hydrated: true, ...reader, replaceReaderData: jest.fn(),
   } as never);
   jest.mocked(useListsStore.getState).mockReturnValue({
-    lists: [list], replaceLists: jest.fn(),
+    _hydrated: true, lists: [list], replaceLists: jest.fn(),
   } as never);
 });
 
@@ -141,11 +163,18 @@ test('restores ePub under a new URI and restores reader position', async () => {
   await importBackup();
 
   expect(restoreEpub).toHaveBeenCalledWith('book-1', 'ZXB1Yg==');
-  expect(useBooksStore.getState().replaceBooks).toHaveBeenCalledWith([
-    { ...book, epubUri: 'file:///new.epub' },
-  ]);
-  expect(useReaderSettingsStore.getState().replaceReaderData).toHaveBeenCalledWith(reader);
-  expect(useListsStore.getState().replaceLists).toHaveBeenCalledWith([]);
+  expect(saveJsonMany).toHaveBeenCalledTimes(1);
+  expect(saveJsonMany).toHaveBeenCalledWith({
+    'aleph-books': [{ ...book, epubUri: 'file:///new.epub' }],
+    'aleph-sessions': [],
+    'aleph-quotes': [],
+    'aleph-goals': null,
+    'aleph-lists': [],
+    'aleph-readerSettings': reader,
+  });
+  expect(useBooksStore.setState).toHaveBeenCalledWith({ books: [{ ...book, epubUri: 'file:///new.epub' }] });
+  expect(useReaderSettingsStore.setState).toHaveBeenCalledWith(reader);
+  expect(useListsStore.setState).toHaveBeenCalledWith({ lists: [] });
 });
 
 test('restores custom lists from a v3 backup', async () => {
@@ -160,7 +189,7 @@ test('restores custom lists from a v3 backup', async () => {
 
   await importBackup();
 
-  expect(useListsStore.getState().replaceLists).toHaveBeenCalledWith([list]);
+  expect(useListsStore.setState).toHaveBeenCalledWith({ lists: [list] });
 });
 
 test('rejects a list that references a book missing from the backup', async () => {
@@ -173,7 +202,7 @@ test('rejects a list that references a book missing from the backup', async () =
   }));
 
   await expect(importBackup()).rejects.toThrow('listas inválidas');
-  expect(useBooksStore.getState().replaceBooks).not.toHaveBeenCalled();
+  expect(saveJsonMany).not.toHaveBeenCalled();
 });
 
 test('rejects an incomplete backup before replacing local data', async () => {
@@ -185,6 +214,37 @@ test('rejects an incomplete backup before replacing local data', async () => {
   }));
 
   await expect(importBackup()).rejects.toThrow('ePub');
-  expect(useBooksStore.getState().replaceBooks).not.toHaveBeenCalled();
+  expect(saveJsonMany).not.toHaveBeenCalled();
   expect(restoreEpub).not.toHaveBeenCalled();
+});
+
+const validBackup = JSON.stringify({
+  version: 3, exportedAt: '2026-01-01T00:00:00.000Z', books: [book],
+  sessions: [], goal: null, quotes: [], reader, epubs: { 'book-1': 'ZXB1Yg==' }, lists: [list],
+});
+
+test('keeps the previous data in memory when writing the restored backup fails', async () => {
+  jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+    canceled: false, assets: [{ uri: 'file:///backup.json' }],
+  } as never);
+  jest.mocked(FileSystem.readAsStringAsync).mockResolvedValue(validBackup);
+  jest.mocked(restoreEpub).mockResolvedValue('file:///new.epub');
+  jest.mocked(saveJsonMany).mockRejectedValueOnce(new Error('disk full'));
+
+  await expect(importBackup()).rejects.toThrow('disk full');
+  for (const store of [useBooksStore, useSessionsStore, useQuotesStore, useGoalsStore, useReaderSettingsStore, useListsStore]) {
+    expect(store.setState).not.toHaveBeenCalled();
+  }
+});
+
+test('refuses to restore while some local data has not loaded', async () => {
+  jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+    canceled: false, assets: [{ uri: 'file:///backup.json' }],
+  } as never);
+  jest.mocked(FileSystem.readAsStringAsync).mockResolvedValue(validBackup);
+  jest.mocked(useListsStore.getState).mockReturnValue({ _hydrated: false, lists: [] } as never);
+
+  await expect(importBackup()).rejects.toThrow('no terminaron de cargar');
+  expect(restoreEpub).not.toHaveBeenCalled();
+  expect(saveJsonMany).not.toHaveBeenCalled();
 });

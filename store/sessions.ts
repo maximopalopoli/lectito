@@ -5,10 +5,10 @@ import { reportReadError, saveJson } from '@/lib/storage';
 
 import type { Session } from '@/types';
 
-const STORAGE_KEY = 'aleph-sessions';
+export const SESSIONS_STORAGE_KEY = 'aleph-sessions';
 
 function saveSessions(sessions: Session[]) {
-  void saveJson(STORAGE_KEY, sessions);
+  void saveJson(SESSIONS_STORAGE_KEY, sessions);
 }
 
 export interface SessionsState {
@@ -21,7 +21,7 @@ export interface SessionsState {
 }
 
 export const useSessionsStore = create<SessionsState>()((set, get) => {
-  AsyncStorage.getItem(STORAGE_KEY)
+  AsyncStorage.getItem(SESSIONS_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -32,7 +32,7 @@ export const useSessionsStore = create<SessionsState>()((set, get) => {
       set({ _hydrated: true });
     })
     .catch(() => {
-      reportReadError(STORAGE_KEY);
+      reportReadError(SESSIONS_STORAGE_KEY);
     });
 
   return {

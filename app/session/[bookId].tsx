@@ -20,10 +20,10 @@ import BookCover from "@/components/BookCover";
 import ScreenHeader from "@/components/ScreenHeader";
 import { confirmThen } from "@/lib/confirm";
 import { readingProgress } from "@/lib/progress";
+import { recordSession } from "@/lib/recordSession";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useReaderSettingsStore } from "@/store/readerSettings";
-import { useSessionsStore } from "@/store/sessions";
 
 type TimerStatus = "IDLE" | "RUNNING" | "PAUSED" | "STOPPED";
 
@@ -53,9 +53,6 @@ export default function SessionScreen() {
   const insets = useSafeAreaInsets();
   const colors = useTheme();
   const books = useBooksStore((s) => s.books);
-  const updateBook = useBooksStore((s) => s.updateBook);
-  const changeStatus = useBooksStore((s) => s.changeStatus);
-  const addSession = useSessionsStore((s) => s.addSession);
 
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
   const readerPosition = useReaderSettingsStore((s) => (bookId ? s.positions[bookId] : undefined));
@@ -175,17 +172,17 @@ export default function SessionScreen() {
   const handleSave = () => {
     if (!pageValid) return;
 
-    addSession({
-      bookId: book.id,
-      startedAt: startedAtRef.current ?? new Date().toISOString(),
-      endedAt: new Date().toISOString(),
-      durationMin: Math.max(1, Math.round(elapsedSeconds / 60)),
-      pagesRead,
-      note: noteInput.trim() || null,
-    });
-
-    updateBook(book.id, { currentPage: page });
-    if (reachedEnd && markDone) changeStatus(book.id, "DONE");
+    recordSession(
+      {
+        bookId: book.id,
+        startedAt: startedAtRef.current ?? new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        durationMin: Math.max(1, Math.round(elapsedSeconds / 60)),
+        pagesRead,
+        note: noteInput.trim() || null,
+      },
+      { currentPage: page, status: reachedEnd && markDone ? "DONE" : undefined },
+    );
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     leave();

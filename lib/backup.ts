@@ -3,15 +3,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 
-import { useBooksStore } from '@/store/books';
-import { useQuotesStore } from '@/store/quotes';
-import { useSessionsStore } from '@/store/sessions';
-import { useGoalsStore } from '@/store/goals';
-import { useReaderSettingsStore, type ReaderData } from '@/store/readerSettings';
-import { useListsStore } from '@/store/lists';
+import { BOOKS_STORAGE_KEY, useBooksStore } from '@/store/books';
+import { QUOTES_STORAGE_KEY, useQuotesStore } from '@/store/quotes';
+import { SESSIONS_STORAGE_KEY, useSessionsStore } from '@/store/sessions';
+import { GOAL_STORAGE_KEY, useGoalsStore } from '@/store/goals';
+import { READER_STORAGE_KEY, useReaderSettingsStore, type ReaderData } from '@/store/readerSettings';
+import { LISTS_STORAGE_KEY, useListsStore } from '@/store/lists';
 import { isReadingList } from '@/lib/listValidation';
 import { readEpubAsBase64, restoreEpub } from '@/lib/epubStorage';
-import { flushStorageWrites } from '@/lib/storage';
+import { flushStorageWrites, saveJsonMany } from '@/lib/storage';
 import type { Book, Goal, Quote, ReadingList, Session } from '@/types';
 
 interface BackupData {
@@ -155,6 +155,11 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
     throw new Error('El backup contiene listas inválidas');
   }
 
+  const stores = [useBooksStore, useSessionsStore, useQuotesStore, useGoalsStore, useReaderSettingsStore, useListsStore];
+  if (!stores.every((store) => store.getState()._hydrated)) {
+    throw new Error('Los datos locales no terminaron de cargar. No se modificó nada.');
+  }
+
   const missingEpubs = backup.version === 1
     ? backup.books.filter((book) => Boolean(book.epubUri)).length
     : 0;
@@ -165,28 +170,34 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
     books.push({ ...book, epubUri });
   }
 
-  useBooksStore.getState().replaceBooks(books);
-  useListsStore.getState().replaceLists(backup.version === 3 ? backup.lists! : []);
-  useSessionsStore.getState().replaceSessions(backup.sessions);
+  const sessions = backup.sessions;
+  const quotes = backup.quotes ?? [];
+  const goal = backup.goal ?? null;
+  const lists = backup.version === 3 ? backup.lists! : [];
+  const reader: ReaderData = backup.version !== 1 && backup.reader
+    ? backup.reader
+    : { positions: {}, settings: { fontSize: 100, fontFamily: 'default', theme: 'light' } };
 
-  if (backup.goal) {
-    useGoalsStore.getState().setGoal(backup.goal);
-  } else {
-    useGoalsStore.getState().clearGoal();
-  }
-
-  useQuotesStore.getState().replaceQuotes(backup.quotes ?? []);
-  if (backup.version !== 1 && backup.reader) {
-    useReaderSettingsStore.getState().replaceReaderData(backup.reader);
-  } else {
-    useReaderSettingsStore.getState().replaceReaderData({
-      positions: {},
-      settings: { fontSize: 100, fontFamily: 'default', theme: 'light' },
-    });
-  }
+  // Write every store in one call before touching memory: if it fails, both
+  // the device and the screen keep the previous data instead of a mix.
   await flushStorageWrites();
+  await saveJsonMany({
+    [BOOKS_STORAGE_KEY]: books,
+    [SESSIONS_STORAGE_KEY]: sessions,
+    [QUOTES_STORAGE_KEY]: quotes,
+    [GOAL_STORAGE_KEY]: goal,
+    [LISTS_STORAGE_KEY]: lists,
+    [READER_STORAGE_KEY]: reader,
+  });
 
-  return { books: books.length, sessions: backup.sessions.length, missingEpubs };
+  useBooksStore.setState({ books });
+  useSessionsStore.setState({ sessions });
+  useQuotesStore.setState({ quotes });
+  useGoalsStore.setState({ goal });
+  useListsStore.setState({ lists });
+  useReaderSettingsStore.setState(reader);
+
+  return { books: books.length, sessions: sessions.length, missingEpubs };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -5,10 +5,10 @@ import { reportReadError, saveJson } from '@/lib/storage';
 
 import type { Quote, QuoteColor } from '@/types';
 
-const STORAGE_KEY = 'aleph-quotes';
+export const QUOTES_STORAGE_KEY = 'aleph-quotes';
 
 function saveQuotes(quotes: Quote[]) {
-  void saveJson(STORAGE_KEY, quotes);
+  void saveJson(QUOTES_STORAGE_KEY, quotes);
 }
 
 export interface QuotesState {
@@ -29,7 +29,7 @@ export interface QuotesState {
 }
 
 export const useQuotesStore = create<QuotesState>()((set, get) => {
-  AsyncStorage.getItem(STORAGE_KEY)
+  AsyncStorage.getItem(QUOTES_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -40,7 +40,7 @@ export const useQuotesStore = create<QuotesState>()((set, get) => {
       set({ _hydrated: true });
     })
     .catch(() => {
-      reportReadError(STORAGE_KEY);
+      reportReadError(QUOTES_STORAGE_KEY);
     });
 
   return {

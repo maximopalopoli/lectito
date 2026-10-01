@@ -4,7 +4,7 @@ import { reportReadError, saveJson } from '@/lib/storage';
 
 import type { ReaderPosition, ReaderTheme } from '@/types';
 
-const STORAGE_KEY = 'aleph-reader';
+export const READER_STORAGE_KEY = 'aleph-reader';
 const LOCATIONS_KEY = 'aleph-locations';
 
 export interface ReaderData {
@@ -13,7 +13,7 @@ export interface ReaderData {
 }
 
 function save(data: ReaderData) {
-  void saveJson(STORAGE_KEY, data);
+  void saveJson(READER_STORAGE_KEY, data);
 }
 
 const DEFAULT_SETTINGS: ReaderTheme = {
@@ -35,7 +35,7 @@ export interface ReaderSettingsState {
 }
 
 export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) => {
-  AsyncStorage.getItem(STORAGE_KEY)
+  AsyncStorage.getItem(READER_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -52,7 +52,7 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
       set({ _hydrated: true });
     })
     .catch(() => {
-      reportReadError(STORAGE_KEY);
+      reportReadError(READER_STORAGE_KEY);
     });
 
   return {

@@ -6,7 +6,7 @@ import { reportReadError, saveJson } from '@/lib/storage';
 import { isReadingList } from '@/lib/listValidation';
 import type { ReadingList } from '@/types';
 
-const STORAGE_KEY = 'aleph-lists';
+export const LISTS_STORAGE_KEY = 'aleph-lists';
 
 export interface ListsState {
   lists: ReadingList[];
@@ -29,18 +29,18 @@ function validName(lists: ReadingList[], name: string, exceptId?: string): boole
 }
 
 function saveLists(lists: ReadingList[]): void {
-  void saveJson(STORAGE_KEY, lists);
+  void saveJson(LISTS_STORAGE_KEY, lists);
 }
 
 export const useListsStore = create<ListsState>()((set, get) => {
-  AsyncStorage.getItem(STORAGE_KEY)
+  AsyncStorage.getItem(LISTS_STORAGE_KEY)
     .then((raw) => {
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
         if (!Array.isArray(parsed) || !parsed.every(isReadingList) ||
           new Set(parsed.map((list) => list.id)).size !== parsed.length ||
           new Set(parsed.map((list) => list.name.toLocaleLowerCase())).size !== parsed.length) {
-          reportReadError(STORAGE_KEY);
+          reportReadError(LISTS_STORAGE_KEY);
           return;
         }
         set({ lists: parsed, _hydrated: true });
@@ -49,7 +49,7 @@ export const useListsStore = create<ListsState>()((set, get) => {
       set({ _hydrated: true });
     })
     .catch(() => {
-      reportReadError(STORAGE_KEY);
+      reportReadError(LISTS_STORAGE_KEY);
     });
 
   return {
