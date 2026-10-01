@@ -78,6 +78,8 @@ export default function BookDetailScreen() {
   }
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/library"));
+  const hasEpub = Boolean(book.epubUri);
+  const openReader = () => router.push({ pathname: "/book/reader", params: { bookId: book.id } });
 
   const confirmDelete = () => {
     Alert.alert(
@@ -247,7 +249,16 @@ export default function BookDetailScreen() {
 
         {/* Actions */}
         <View style={{ marginTop: 24, gap: 10 }}>
-          {book.status === "TBR" && (
+          {/* Con ePub, leer en la app es la acción principal: el lector ya registra la sesión. */}
+          {hasEpub && (book.status === "TBR" || book.status === "READING") && (
+            <ActionButton
+              icon="reader-outline"
+              label={book.status === "TBR" ? "Empezar a leer el ePub" : "Seguir leyendo el ePub"}
+              onPress={openReader}
+            />
+          )}
+
+          {book.status === "TBR" && !hasEpub && (
             <ActionButton
               icon="book-outline"
               label="Empezar a leer"
@@ -258,8 +269,9 @@ export default function BookDetailScreen() {
           {book.status === "READING" && (
             <>
               <ActionButton
-                icon="play"
-                label="Iniciar sesión de lectura"
+                variant={hasEpub ? "secondary" : "primary"}
+                icon={hasEpub ? "timer-outline" : "play"}
+                label={hasEpub ? "Sesión con temporizador" : "Iniciar sesión de lectura"}
                 onPress={() => router.push(`/session/${book.id}`)}
               />
               <View style={{ flexDirection: "row", gap: 10 }}>
@@ -282,13 +294,8 @@ export default function BookDetailScreen() {
             </>
           )}
 
-          {book.epubUri && (
-            <ActionButton
-              variant="secondary"
-              icon="reader-outline"
-              label="Leer ePub"
-              onPress={() => router.push({ pathname: "/book/reader", params: { bookId: book.id } })}
-            />
+          {hasEpub && (book.status === "DONE" || book.status === "DNF") && (
+            <ActionButton variant="secondary" icon="reader-outline" label="Leer ePub" onPress={openReader} />
           )}
 
           {(book.status === "DONE" || book.status === "DNF") && (

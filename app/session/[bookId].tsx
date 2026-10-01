@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCover from "@/components/BookCover";
 import ScreenHeader from "@/components/ScreenHeader";
+import { confirmThen } from "@/lib/confirm";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
@@ -42,18 +42,6 @@ function formatDuration(totalSeconds: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h} h ${m} min` : `${h} h`;
-}
-
-/** Pide confirmación en nativo; en web (donde `Alert` no hace nada) ejecuta directo. */
-function confirmThen(title: string, message: string, confirmText: string, onConfirm: () => void) {
-  if (Platform.OS === "web") {
-    onConfirm();
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: "Cancelar", style: "cancel" },
-    { text: confirmText, style: "destructive", onPress: onConfirm },
-  ]);
 }
 
 export default function SessionScreen() {
