@@ -1,10 +1,9 @@
 import { useMemo, useRef } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from 'expo-router';
+import { ScrollView, Text, View } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
+import ScreenHeader from '@/components/ScreenHeader';
 import StatsShareCard from '@/components/StatsShareCard';
 import { captureAndShare } from '@/lib/shareCard';
 import { getBestStreak, getStreak } from '@/lib/stats';
@@ -12,8 +11,6 @@ import { useBooksStore } from '@/store/books';
 import { useSessionsStore } from '@/store/sessions';
 
 export default function ShareStatsScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
   const viewShotRef = useRef<ViewShot>(null);
@@ -39,28 +36,11 @@ export default function ShareStatsScreen() {
       style={{ flex: 1, backgroundColor: '#000' }}
       contentContainerStyle={{
         alignItems: 'center',
-        paddingTop: insets.top + 16,
         paddingBottom: 40,
       }}
     >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          paddingHorizontal: 16,
-          marginBottom: 24,
-        }}
-      >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: '#007AFF', fontSize: 16 }}>← Volver</Text>
-        </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '600', color: '#fff' }}>
-          Compartir
-        </Text>
-        <View style={{ width: 60 }} />
+      <View style={{ alignSelf: 'stretch', marginBottom: 16 }}>
+        <ScreenHeader title="Compartir" dark />
       </View>
 
       {/* Card preview */}

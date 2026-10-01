@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
+import CircleIconButton from '@/components/CircleIconButton';
+import ScreenHeader from '@/components/ScreenHeader';
 import { useTheme } from '@/lib/theme';
 import { useBooksStore } from '@/store/books';
 import { useQuotesStore } from '@/store/quotes';
@@ -20,7 +21,6 @@ const COLOR_HEX: Record<QuoteColor, string> = {
 export default function QuotesListScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
 
   const books = useBooksStore((s) => s.books);
@@ -37,7 +37,7 @@ export default function QuotesListScreen() {
   );
 
   const handleDelete = (id: string) => {
-    Alert.alert('Eliminar cita', 'Esta accion no se puede deshacer.', [
+    Alert.alert('Eliminar cita', 'Esta acción no se puede deshacer.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => deleteQuote(id) },
     ]);
@@ -48,39 +48,31 @@ export default function QuotesListScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingTop: insets.top + 16,
-          paddingHorizontal: 16,
-          paddingBottom: 12,
-        }}
-      >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
-        </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary }}>
-          Citas{book ? ` — ${book.title}` : ''}
-        </Text>
-        <Pressable
-          onPress={() =>
-            router.push({ pathname: '/book/quote-form', params: { bookId } })
-          }
-          style={{ padding: 4 }}
+      <ScreenHeader
+        title="Citas"
+        right={
+          <CircleIconButton
+            icon="add"
+            label="Agregar cita"
+            onPress={() => router.push({ pathname: '/book/quote-form', params: { bookId } })}
+          />
+        }
+      />
+      {book && (
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: 14, color: colors.textSecondary, paddingHorizontal: 24, marginTop: -4, marginBottom: 16 }}
         >
-          <Text style={{ color: colors.primary, fontSize: 22, fontWeight: '600' }}>+</Text>
-        </Pressable>
-      </View>
+          {book.title}
+        </Text>
+      )}
 
       <View style={{ paddingHorizontal: 24 }}>
         {quotes.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>{"\u201C\u201D"}</Text>
             <Text style={{ color: colors.textMuted, fontSize: 15, textAlign: 'center' }}>
-              Aun no hay citas para este libro.{'\n'}Agrega tu primera cita.
+              Todavía no hay citas para este libro.{'\n'}Tocá + para agregar la primera.
             </Text>
           </View>
         ) : (

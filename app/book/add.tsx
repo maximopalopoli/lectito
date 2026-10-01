@@ -8,7 +8,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { randomUUID } from "expo-crypto";
@@ -19,6 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 import AnimatedPressable from "@/components/AnimatedPressable";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import BookCover from "@/components/BookCover";
+import ScreenHeader from "@/components/ScreenHeader";
+import SegmentedControl from "@/components/SegmentedControl";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
@@ -27,11 +28,11 @@ import { parseEpub } from "@/lib/epubParser";
 import { persistEpub } from "@/lib/epubStorage";
 import type { BookSearchResult, BookStatus } from "@/types";
 
-const SHELVES: { label: string; status: BookStatus }[] = [
-  { label: "Quiero leer", status: "TBR" },
-  { label: "Leyendo", status: "READING" },
-  { label: "Leído", status: "DONE" },
-  { label: "Abandonado", status: "DNF" },
+const SHELVES: { label: string; value: BookStatus }[] = [
+  { label: "Quiero leer", value: "TBR" },
+  { label: "Leyendo", value: "READING" },
+  { label: "Leído", value: "DONE" },
+  { label: "Abandonado", value: "DNF" },
 ];
 
 function looksLikeISBN(query: string): boolean {
@@ -41,7 +42,6 @@ function looksLikeISBN(query: string): boolean {
 
 export default function AddBookScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
   const addBook = useBooksStore((s) => s.addBook);
 
@@ -177,29 +177,7 @@ export default function AddBookScreen() {
       contentContainerStyle={{ paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingTop: insets.top + 8,
-          paddingHorizontal: 8,
-          paddingBottom: 8,
-        }}
-      >
-        <Pressable
-          onPress={goBack}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          hitSlop={4}
-          style={{ width: 44, height: 44, justifyContent: "center", alignItems: "center" }}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.primary} />
-        </Pressable>
-        <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.textPrimary, marginLeft: 4 }}>
-          Agregar libro
-        </Text>
-      </View>
+      <ScreenHeader title="Agregar libro" onBack={goBack} />
 
       <View style={{ paddingHorizontal: spacing.lg }}>
         {/* Search */}
@@ -440,51 +418,7 @@ export default function AddBookScreen() {
             >
               ¿En qué estantería?
             </Text>
-            <View
-              accessibilityRole="radiogroup"
-              style={{
-                flexDirection: "row",
-                backgroundColor: colors.surface,
-                borderRadius: radius.lg,
-                padding: 3,
-              }}
-            >
-              {SHELVES.map((shelf) => {
-                const isActive = shelf.status === status;
-                return (
-                  <AnimatedPressable
-                    key={shelf.status}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setStatus(shelf.status);
-                    }}
-                    haptic="none"
-                    scaleDown={0.95}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: isActive }}
-                    style={{
-                      flex: 1,
-                      minHeight: 40,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      borderRadius: radius.md,
-                      backgroundColor: isActive ? colors.primary : "transparent",
-                    }}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 13,
-                        color: isActive ? colors.onPrimary : colors.textSecondary,
-                        fontWeight: isActive ? "600" : "500",
-                      }}
-                    >
-                      {shelf.label}
-                    </Text>
-                  </AnimatedPressable>
-                );
-              })}
-            </View>
+            <SegmentedControl options={SHELVES} value={status} onChange={setStatus} accessibilityLabel="Estantería" />
 
             {/* Add button */}
             <AnimatedPressable

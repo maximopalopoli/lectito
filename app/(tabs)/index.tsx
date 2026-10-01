@@ -398,10 +398,11 @@ function ReadingRow({
   const colors = useTheme();
   const progress = bookProgress(book);
   return (
+    // Sin accessibilityRole="button": contiene el botón de play, y en web
+    // eso generaría un <button> anidado dentro de otro.
     <AnimatedPressable
       onPress={onOpen}
       haptic="light"
-      accessibilityRole="button"
       accessibilityLabel={`Ver ${book.title}`}
       style={{
         backgroundColor: colors.surface,

@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCard from "@/components/BookCard";
+import ScreenHeader from "@/components/ScreenHeader";
 import { useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useListsStore } from "@/store/lists";
@@ -79,19 +80,14 @@ export default function ListsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 12 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
-        <Pressable
-          onPress={() => selectedList ? setSelectedId(null) : router.canGoBack() ? router.back() : router.replace("/library")}
-          accessibilityRole="button"
-          accessibilityLabel={selectedList ? "Volver a mis listas" : "Volver a biblioteca"}
-          style={{ paddingVertical: 8, paddingRight: 16 }}
-        >
-          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
-        </Pressable>
-        <Text style={{ flex: 1, fontSize: 22, fontWeight: "700", color: colors.textPrimary }} numberOfLines={1}>
-          {selectedList?.name ?? "Mis listas"}
-        </Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ marginBottom: 12 }}>
+        <ScreenHeader
+          title={selectedList?.name ?? "Mis listas"}
+          onBack={selectedList ? () => setSelectedId(null) : undefined}
+          backLabel={selectedList ? "Volver a mis listas" : "Volver a biblioteca"}
+          fallbackHref="/library"
+        />
       </View>
 
       {selectedList ? (

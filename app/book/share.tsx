@@ -1,18 +1,16 @@
 import { useMemo, useRef } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ScrollView, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import ViewShot from 'react-native-view-shot';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
+import ScreenHeader from '@/components/ScreenHeader';
 import BookShareCard from '@/components/BookShareCard';
 import { captureAndShare } from '@/lib/shareCard';
 import { useBooksStore } from '@/store/books';
 
 export default function ShareBookScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const books = useBooksStore((s) => s.books);
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
   const viewShotRef = useRef<ViewShot>(null);
@@ -30,28 +28,11 @@ export default function ShareBookScreen() {
       style={{ flex: 1, backgroundColor: '#000' }}
       contentContainerStyle={{
         alignItems: 'center',
-        paddingTop: insets.top + 16,
         paddingBottom: 40,
       }}
     >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          paddingHorizontal: 16,
-          marginBottom: 24,
-        }}
-      >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: '#007AFF', fontSize: 16 }}>← Volver</Text>
-        </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '600', color: '#fff' }}>
-          Compartir
-        </Text>
-        <View style={{ width: 60 }} />
+      <View style={{ alignSelf: 'stretch', marginBottom: 16 }}>
+        <ScreenHeader title="Compartir" dark />
       </View>
 
       {/* Card preview */}

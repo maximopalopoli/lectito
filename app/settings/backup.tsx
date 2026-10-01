@@ -1,21 +1,18 @@
 import { useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Alert, Platform, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import ScreenHeader from "@/components/ScreenHeader";
 import { useTheme } from "@/lib/theme";
 import { exportBackup, importBackup } from "@/lib/backup";
 
 export default function BackupScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; kind: "success" | "error" } | null>(null);
 
   const handleExport = async (destination: "share" | "save") => {
     if (exporting) return;
@@ -25,13 +22,16 @@ export default function BackupScreen() {
       const saved = await exportBackup(destination);
       if (!saved) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setMessage(destination === "save"
-        ? "Backup guardado en la carpeta elegida"
-        : Platform.OS === "web"
-          ? "Descarga iniciada"
-          : "Se abrió el menú para compartir. Comprobá que hayas guardado el archivo.");
+      setMessage({
+        kind: "success",
+        text: destination === "save"
+          ? "Backup guardado en la carpeta elegida"
+          : Platform.OS === "web"
+            ? "Descarga iniciada"
+            : "Se abrió el menú para compartir. Comprobá que hayas guardado el archivo.",
+      });
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Error al exportar");
+      setMessage({ kind: "error", text: e instanceof Error ? e.message : "Error al exportar" });
     } finally {
       setExporting(false);
     }
@@ -44,16 +44,18 @@ export default function BackupScreen() {
       try {
         const result = await importBackup();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setMessage(
-          `Restaurado: ${result.books} libros y ${result.sessions} sesiones` +
-          (result.missingEpubs > 0
-            ? `. ${result.missingEpubs} ePub no estaban incluidos en este backup antiguo; volvé a importarlos.`
-            : ""),
-        );
+        setMessage({
+          kind: "success",
+          text:
+            `Restaurado: ${result.books} libros y ${result.sessions} sesiones` +
+            (result.missingEpubs > 0
+              ? `. ${result.missingEpubs} ePub no estaban incluidos en este backup antiguo; volvé a importarlos.`
+              : ""),
+        });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Error al importar";
         if (msg !== "Cancelado") {
-          setMessage(msg);
+          setMessage({ kind: "error", text: msg });
         }
       } finally {
         setImporting(false);
@@ -81,26 +83,10 @@ export default function BackupScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingTop: insets.top + 16,
-          paddingHorizontal: 16,
-          paddingBottom: 12,
-        }}
-      >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader title="Backup" />
 
       <View style={{ paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.textPrimary, marginBottom: 8 }}>
-          Backup
-        </Text>
-        <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 32 }}>
+        <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: 24 }}>
           Exportá tus datos como JSON o restaurá desde un backup anterior.
         </Text>
 
@@ -140,8 +126,10 @@ export default function BackupScreen() {
             haptic="none"
             disabled={exporting}
             style={{
-              backgroundColor: exporting ? "#a0c4ff" : colors.primary,
-              paddingVertical: 12,
+              backgroundColor: colors.primary,
+              opacity: exporting ? 0.5 : 1,
+              minHeight: 48,
+              justifyContent: "center",
               borderRadius: 8,
               alignItems: "center",
             }}
@@ -155,7 +143,7 @@ export default function BackupScreen() {
               onPress={() => handleExport("share")}
               haptic="none"
               disabled={exporting}
-              style={{ alignItems: "center", paddingVertical: 12, marginTop: 8 }}
+              style={{ alignItems: "center", justifyContent: "center", minHeight: 44, marginTop: 8 }}
             >
               <Text style={{ color: colors.primary, fontSize: 14 }}>Compartir archivo</Text>
             </AnimatedPressable>
@@ -196,9 +184,12 @@ export default function BackupScreen() {
           <AnimatedPressable
             onPress={handleImport}
             haptic="none"
+            disabled={importing}
             style={{
-              backgroundColor: importing ? "#ffd699" : colors.warning,
-              paddingVertical: 12,
+              backgroundColor: colors.warning,
+              opacity: importing ? 0.5 : 1,
+              minHeight: 48,
+              justifyContent: "center",
               borderRadius: 8,
               alignItems: "center",
             }}
@@ -212,23 +203,26 @@ export default function BackupScreen() {
         {/* Feedback message */}
         {message && (
           <View
+            accessibilityLiveRegion="polite"
             style={{
               marginTop: 20,
-              padding: 12,
-              backgroundColor: message.startsWith("Error")
-                ? "#FFF0F0"
-                : "#F0FFF0",
-              borderRadius: 8,
+              padding: 14,
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              borderLeftWidth: 3,
+              borderLeftColor: message.kind === "error" ? colors.danger : colors.success,
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 10,
             }}
           >
-            <Text
-              style={{
-                fontSize: 14,
-                color: message.startsWith("Error") ? colors.danger : colors.success,
-                textAlign: "center",
-              }}
-            >
-              {message}
+            <Ionicons
+              name={message.kind === "error" ? "alert-circle" : "checkmark-circle"}
+              size={20}
+              color={message.kind === "error" ? colors.danger : colors.success}
+            />
+            <Text style={{ flex: 1, fontSize: 14, color: colors.textPrimary }}>
+              {message.text}
             </Text>
           </View>
         )}

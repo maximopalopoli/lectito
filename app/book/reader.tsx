@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { usePreventRemove, type NavigationAction } from "@react-navigation/native";
@@ -384,8 +385,8 @@ export default function ReaderScreen() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text style={{ color: "#888", fontSize: 16 }}>Este libro no tiene ePub asociado</Text>
-        <Pressable onPress={handleBack} style={{ marginTop: 16 }}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+        <Pressable onPress={handleBack} style={{ marginTop: 16, minHeight: 44, justifyContent: "center" }}>
+          <Text style={{ color: "#007AFF", fontSize: 16 }}>Volver</Text>
         </Pressable>
       </View>
     );
@@ -415,8 +416,14 @@ export default function ReaderScreen() {
         }}
         pointerEvents={toolbarVisible ? "auto" : "none"}
       >
-        <Pressable onPress={handleBack} hitSlop={8}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>← Volver</Text>
+        <Pressable
+          onPress={handleBack}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          hitSlop={8}
+          style={{ width: 36, height: 36, justifyContent: "center" }}
+        >
+          <Ionicons name="chevron-back" size={24} color="#007AFF" />
         </Pressable>
         <Text
           style={{ flex: 1, textAlign: "center", fontSize: 14, fontWeight: "600", color: themeFg, marginHorizontal: 8 }}

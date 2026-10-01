@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import ScreenHeader from "@/components/ScreenHeader";
+import SegmentedControl from "@/components/SegmentedControl";
 import { useTheme } from "@/lib/theme";
 import { useGoalsStore } from "@/store/goals";
 import type { GoalMetric, GoalPeriod } from "@/types";
@@ -21,7 +22,6 @@ const PERIODS: { label: string; value: GoalPeriod }[] = [
 
 export default function ConfigureGoalScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
   const { goal, setGoal, clearGoal } = useGoalsStore();
 
@@ -32,17 +32,22 @@ export default function ConfigureGoalScreen() {
   const parsedTarget = parseInt(target, 10);
   const isValid = !isNaN(parsedTarget) && parsedTarget > 0;
 
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/stats");
+  };
+
   const handleSave = () => {
     if (!isValid) return;
     setGoal({ metric, period, target: parsedTarget });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+    leave();
   };
 
   const handleDelete = () => {
     clearGoal();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    router.back();
+    leave();
   };
 
   return (
@@ -51,108 +56,27 @@ export default function ConfigureGoalScreen() {
       contentContainerStyle={{ paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingTop: insets.top + 16,
-          paddingHorizontal: 16,
-          paddingBottom: 12,
-        }}
-      >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader title={goal ? "Editar objetivo" : "Nuevo objetivo"} fallbackHref="/stats" />
 
-      <View style={{ paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.textPrimary, marginBottom: 24 }}>
-          {goal ? "Editar objetivo" : "Nuevo objetivo"}
-        </Text>
-
+      <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
         {/* Metric selector */}
-        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 8 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: 8 }}>
           ¿Qué querés medir?
         </Text>
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
-          {METRICS.map((m) => {
-            const isActive = m.value === metric;
-            return (
-              <AnimatedPressable
-                key={m.value}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setMetric(m.value);
-                }}
-                haptic="none"
-                scaleDown={0.95}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: isActive ? colors.primary : colors.border,
-                  backgroundColor: isActive ? colors.primary : colors.background,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    color: isActive ? colors.onPrimary : colors.textPrimary,
-                    fontWeight: isActive ? "600" : "400",
-                  }}
-                >
-                  {m.label}
-                </Text>
-              </AnimatedPressable>
-            );
-          })}
+        <View style={{ marginBottom: 24 }}>
+          <SegmentedControl options={METRICS} value={metric} onChange={setMetric} accessibilityLabel="Métrica" />
         </View>
 
         {/* Period selector */}
-        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 8 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: 8 }}>
           ¿Cada cuánto?
         </Text>
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
-          {PERIODS.map((p) => {
-            const isActive = p.value === period;
-            return (
-              <AnimatedPressable
-                key={p.value}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setPeriod(p.value);
-                }}
-                haptic="none"
-                scaleDown={0.95}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: isActive ? colors.primary : colors.border,
-                  backgroundColor: isActive ? colors.primary : colors.background,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    color: isActive ? colors.onPrimary : colors.textPrimary,
-                    fontWeight: isActive ? "600" : "400",
-                  }}
-                >
-                  {p.label}
-                </Text>
-              </AnimatedPressable>
-            );
-          })}
+        <View style={{ marginBottom: 24 }}>
+          <SegmentedControl options={PERIODS} value={period} onChange={setPeriod} accessibilityLabel="Período" />
         </View>
 
         {/* Target input */}
-        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary, marginBottom: 8 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: 8 }}>
           Objetivo
         </Text>
         <View
@@ -165,17 +89,18 @@ export default function ConfigureGoalScreen() {
         >
           <TextInput
             value={target}
-            onChangeText={setTarget}
+            onChangeText={(t) => setTarget(t.replace(/[^0-9]/g, ""))}
+            accessibilityLabel="Objetivo"
             keyboardType="number-pad"
             placeholder="20"
             placeholderTextColor={colors.textTertiary}
             style={{
-              flex: 1,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: 8,
-              padding: 12,
-              fontSize: 18,
+              width: 110,
+              backgroundColor: colors.surface,
+              borderRadius: 10,
+              paddingVertical: 12,
+              fontSize: 22,
+              fontWeight: "600",
               color: colors.textPrimary,
               textAlign: "center",
             }}
@@ -190,11 +115,16 @@ export default function ConfigureGoalScreen() {
         <AnimatedPressable
           onPress={handleSave}
           haptic="none"
+          disabled={!isValid}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !isValid }}
           style={{
-            backgroundColor: isValid ? colors.success : "#a0d8a8",
-            paddingVertical: 14,
+            backgroundColor: colors.primary,
+            opacity: isValid ? 1 : 0.4,
+            minHeight: 50,
             borderRadius: 10,
             alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 16 }}>
@@ -208,10 +138,12 @@ export default function ConfigureGoalScreen() {
             onPress={handleDelete}
             haptic="none"
             scaleDown={0.97}
+            accessibilityRole="button"
             style={{
-              paddingVertical: 14,
+              minHeight: 44,
               borderRadius: 10,
               alignItems: "center",
+              justifyContent: "center",
               marginTop: 12,
             }}
           >

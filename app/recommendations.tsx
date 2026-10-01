@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Text, View } from 'react-native';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
+import CircleIconButton from '@/components/CircleIconButton';
+import ScreenHeader from '@/components/ScreenHeader';
 import RecommendationCard from '@/components/RecommendationCard';
 import { useTheme } from '@/lib/theme';
 import { fetchSubjectsForBook, fetchBooksBySubject, searchBooksByAuthor } from '@/lib/openLibrary';
@@ -56,7 +57,6 @@ function buildRecs(
 
 export default function RecommendationsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
   const books = useBooksStore((s) => s.books);
   const { cache, setCache } = useRecommendationsStore();
@@ -234,44 +234,30 @@ export default function RecommendationsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 16,
-          paddingHorizontal: 16,
-          paddingBottom: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
+      <ScreenHeader
+        title={title}
+        onBack={() => {
+          if (screenState === 'results' || screenState === 'error') {
+            setScreenState('selection');
+          } else if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/library');
+          }
         }}
-      >
-        <AnimatedPressable
-          onPress={() => {
-            if (screenState === 'results' || screenState === 'error') {
-              setScreenState('selection');
-            } else if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/library');
-            }
-          }}
-          haptic="light"
-          style={{ marginRight: 12 }}
-        >
-          <Ionicons name="chevron-back" size={28} color={colors.primary} />
-        </AnimatedPressable>
-        <Text style={{ fontSize: 22, fontWeight: 'bold', flex: 1, color: colors.textPrimary }}>{title}</Text>
-        {screenState === 'results' && (
-          <AnimatedPressable
-            onPress={() => {
-              const selected = eligibleBooks.filter((b) => selectedIds.has(b.id));
-              runPipeline(selected, true);
-            }}
-            haptic="light"
-          >
-            <Ionicons name="refresh" size={22} color={colors.primary} />
-          </AnimatedPressable>
-        )}
-      </View>
+        right={
+          screenState === 'results' ? (
+            <CircleIconButton
+              icon="refresh"
+              label="Buscar otras recomendaciones"
+              onPress={() => {
+                const selected = eligibleBooks.filter((b) => selectedIds.has(b.id));
+                runPipeline(selected, true);
+              }}
+            />
+          ) : undefined
+        }
+      />
 
       {/* Selection */}
       {screenState === 'selection' && (
