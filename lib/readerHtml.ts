@@ -38,11 +38,11 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
   var book = null;
   var rendition = null;
   var currentCfi = null;
-  var currentChapter = '';
   var locationsReady = false;
   var currentFontCss = '';
   var selectionSent = false;
   var suppressClickUntil = 0;
+  var reportTimer = null;
 ${READER_GESTURES_JS}
 
   function send(msg) {
@@ -67,8 +67,8 @@ ${READER_GESTURES_JS}
       case 'prev': if (rendition) rendition.prev(); break;
       case 'goto': if (rendition && data.cfi) rendition.display(data.cfi); break;
       case 'setTheme': applyTheme(data.theme); break;
-      case 'setFontSize': if (rendition) rendition.themes.fontSize(data.size + '%'); break;
-      case 'setFontFamily': applyFont(data.family); break;
+      case 'setFontSize': if (rendition) { rendition.themes.fontSize(data.size + '%'); scheduleReport(); } break;
+      case 'setFontFamily': applyFont(data.family); scheduleReport(); break;
       case 'highlight': addHighlight(data.cfi, data.color); break;
       case 'clearSelection': clearSelection(); break;
       case 'ping': send({ type: 'ready' }); break;
@@ -192,44 +192,12 @@ ${READER_GESTURES_JS}
           }
           send(msg);
           // Re-send current location now that we have percentages
-          if (currentCfi) {
-            var percent = book.locations.percentageFromCfi(currentCfi);
-            var loc = book.locations.locationFromCfi(currentCfi);
-            send({ type: 'relocated', cfi: currentCfi, page: 0, total: 0, rawPercent: percent, percent: Math.round(percent * 100), chapter: currentChapter, location: loc });
-          }
+          var current = currentCfi && rendition.currentLocation();
+          if (current && current.start) reportLocation(current);
         });
       });
 
-      rendition.on('relocated', function(location) {
-        var percent = locationsReady && book.locations ? book.locations.percentageFromCfi(location.start.cfi) : -1;
-        var page = location.start.displayed ? location.start.displayed.page : 0;
-        var total = location.start.displayed ? location.start.displayed.total : 0;
-        var locationIndex = locationsReady && book.locations ? book.locations.locationFromCfi(location.start.cfi) : -1;
-        currentCfi = location.start.cfi;
-
-        var chapter = '';
-        if (book.navigation) {
-          var spineItem = book.spine.get(location.start.href);
-          if (spineItem) {
-            var navItem = book.navigation.toc.find(function(ch) {
-              return ch.href && location.start.href.indexOf(ch.href.split('#')[0]) !== -1;
-            });
-            if (navItem) chapter = navItem.label.trim();
-          }
-        }
-        currentChapter = chapter;
-
-        send({
-          type: 'relocated',
-          cfi: location.start.cfi,
-          page: page,
-          total: total,
-          rawPercent: percent,
-          percent: Math.round(percent * 100),
-          chapter: chapter,
-          location: locationIndex
-        });
-      });
+      rendition.on('relocated', reportLocation);
 
       rendition.on('selected', function(cfiRange) {
         if (!rendition) return;
@@ -251,6 +219,63 @@ ${READER_GESTURES_JS}
     } catch(e) {
       send({ type: 'error', message: e.message || 'Error cargando libro' });
     }
+  }
+
+  // Caracteres del capítulo visible, contados como epub.js cuenta las locations (nodos de texto
+  // que no son solo espacios). Con las páginas del capítulo da cuántos caracteres entran por página.
+  function chapterChars(sectionIndex) {
+    var contents = rendition.getContents().filter(function(c) { return c.sectionIndex === sectionIndex; })[0];
+    var body = contents && contents.document && contents.document.body;
+    if (!body) return 0;
+    var walker = contents.document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
+    var count = 0;
+    var node;
+    while ((node = walker.nextNode())) {
+      if (node.data.trim().length > 0) count += node.data.length;
+    }
+    return count;
+  }
+
+  function reportLocation(location) {
+    var percent = locationsReady && book.locations ? book.locations.percentageFromCfi(location.start.cfi) : -1;
+    var page = location.start.displayed ? location.start.displayed.page : 0;
+    var total = location.start.displayed ? location.start.displayed.total : 0;
+    var locationIndex = locationsReady && book.locations ? book.locations.locationFromCfi(location.start.cfi) : -1;
+    currentCfi = location.start.cfi;
+
+    var chapter = '';
+    if (book.navigation) {
+      var spineItem = book.spine.get(location.start.href);
+      if (spineItem) {
+        var navItem = book.navigation.toc.find(function(ch) {
+          return ch.href && location.start.href.indexOf(ch.href.split('#')[0]) !== -1;
+        });
+        if (navItem) chapter = navItem.label.trim();
+      }
+    }
+
+    send({
+      type: 'relocated',
+      cfi: location.start.cfi,
+      page: page,
+      total: total,
+      chapterChars: chapterChars(location.start.index),
+      rawPercent: percent,
+      percent: Math.round(percent * 100),
+      chapter: chapter,
+      location: locationIndex
+    });
+  }
+
+  // Cambiar letra o tipografía repagina el capítulo sin garantizar un 'relocated';
+  // se vuelve a informar la posición cuando el nuevo layout ya se aplicó.
+  function scheduleReport() {
+    if (reportTimer) clearTimeout(reportTimer);
+    reportTimer = setTimeout(function() {
+      reportTimer = null;
+      var location = rendition && rendition.currentLocation();
+      if (location && location.start) reportLocation(location);
+    }, 500);
   }
 
   function registerThemes() {

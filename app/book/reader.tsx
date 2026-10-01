@@ -27,6 +27,7 @@ import { recordSession } from "@/lib/recordSession";
 import { EpubUnavailableError, persistEpub, readEpubAsBase64 } from "@/lib/epubStorage";
 import { pickDocument } from "@/lib/pickDocument";
 import { getBundledReaderHtml } from "@/lib/readerAssets";
+import { estimatePages, updatePageSample, type PageSample } from "@/lib/readerPages";
 import { darkColors, lightColors } from "@/lib/theme";
 import type { QuoteColor, ReaderThemeName } from "@/types";
 
@@ -134,7 +135,10 @@ export default function ReaderScreen() {
   const [showHighlight, setShowHighlight] = useState(false);
   const [showQuoteHint, setShowQuoteHint] = useState(false);
   const [toc, setToc] = useState<TocItem[]>([]);
+  // page/total: páginas de pantalla del libro con la letra actual (0 mientras no se pueden estimar).
   const [pageInfo, setPageInfo] = useState({ page: 0, total: 0, percent: 0, chapter: "", location: 0 });
+  const totalLocationsRef = useRef(0);
+  const pageSampleRef = useRef<PageSample | null>(null);
 
   // Highlight state
   const [selectedText, setSelectedText] = useState("");
@@ -173,6 +177,11 @@ export default function ReaderScreen() {
     const timeout = setTimeout(() => setShowQuoteHint(false), 4000);
     return () => clearTimeout(timeout);
   }, [showQuoteHint]);
+
+  // Otra letra o tipografía cambia cuánto texto entra por página: se vuelve a medir.
+  useEffect(() => {
+    pageSampleRef.current = null;
+  }, [readerSettings.fontSize, readerSettings.fontFamily]);
 
   // Keep screen awake on native
   useEffect(() => {
@@ -346,6 +355,7 @@ export default function ReaderScreen() {
 
       case "locationsReady":
         // Update book's pageCount with epub.js locations count (more accurate than spine items)
+        if (msg.totalPages) totalLocationsRef.current = msg.totalPages;
         if (msg.totalPages && bookId) {
           updateBook(bookId, { pageCount: msg.totalPages });
         }
@@ -357,9 +367,11 @@ export default function ReaderScreen() {
 
       case "relocated":
         if (msg.rawPercent < 0) break; // locations not ready yet
+        pageSampleRef.current = updatePageSample(pageSampleRef.current, msg.chapterChars ?? 0, msg.total ?? 0);
+        const pages = estimatePages(msg.rawPercent ?? 0, totalLocationsRef.current, pageSampleRef.current);
         setPageInfo({
-          page: msg.page ?? 0,
-          total: msg.total ?? 0,
+          page: pages?.page ?? 0,
+          total: pages?.total ?? 0,
           percent: msg.percent ?? Math.round((msg.rawPercent ?? 0) * 100),
           chapter: msg.chapter ?? "",
           location: msg.location ?? 0,
@@ -647,6 +659,7 @@ export default function ReaderScreen() {
       >
         <Text style={{ fontSize: 13, color: themeFg }}>
           {pageInfo.chapter ? `${pageInfo.chapter} · ` : ""}
+          {pageInfo.total > 0 ? `Pág. ${pageInfo.page} de ${pageInfo.total} · ` : ""}
           {pageInfo.percent}%
         </Text>
         <Text style={{ fontSize: 13, color: "#888" }}>
