@@ -26,7 +26,7 @@ export interface ReaderSettingsState {
   positions: Record<string, ReaderPosition>;
   settings: ReaderTheme;
   _hydrated: boolean;
-  savePosition: (bookId: string, cfi: string) => void;
+  savePosition: (bookId: string, cfi: string, progress?: { percent: number; chapter: string }) => void;
   getPosition: (bookId: string) => string | null;
   updateSettings: (partial: Partial<ReaderTheme>) => void;
   saveLocations: (bookId: string, locations: string) => void;
@@ -60,12 +60,12 @@ export const useReaderSettingsStore = create<ReaderSettingsState>()((set, get) =
     settings: DEFAULT_SETTINGS,
     _hydrated: false,
 
-    savePosition: (bookId, cfi) =>
+    savePosition: (bookId, cfi, progress) =>
       set((state) => {
         if (!state._hydrated) return state;
         const positions = {
           ...state.positions,
-          [bookId]: { cfi, updatedAt: new Date().toISOString() },
+          [bookId]: { cfi, updatedAt: new Date().toISOString(), ...progress },
         };
         save({ positions, settings: state.settings });
         return { positions };

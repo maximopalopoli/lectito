@@ -2,7 +2,9 @@ import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import type { Book } from "@/types";
+import { readingProgress } from "@/lib/progress";
 import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
+import { useReaderSettingsStore } from "@/store/readerSettings";
 import AnimatedPressable from "./AnimatedPressable";
 import BookCover from "./BookCover";
 
@@ -22,6 +24,8 @@ const STATUS_LABEL: Record<Book["status"], string> = {
 
 export default function BookCard({ book, onPress, showStatus = true }: BookCardProps) {
   const colors = useTheme();
+  const position = useReaderSettingsStore((s) => s.positions[book.id]);
+  const progress = readingProgress(book, position);
   return (
     <View
       style={{
@@ -53,11 +57,13 @@ export default function BookCard({ book, onPress, showStatus = true }: BookCardP
         <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>
           {[
             showStatus ? STATUS_LABEL[book.status] : null,
-            book.status === "READING" && book.pageCount > 0
-              ? `${book.currentPage}/${book.pageCount} pp · ${Math.round((book.currentPage / book.pageCount) * 100)}%`
-              : book.pageCount > 0
-                ? `${book.pageCount} pp`
-                : null,
+            progress.byPercent
+              ? book.status === "READING" ? `ePub · ${progress.percent}%` : "ePub"
+              : book.status === "READING" && book.pageCount > 0
+                ? `${book.currentPage}/${book.pageCount} pp · ${progress.percent}%`
+                : book.pageCount > 0
+                  ? `${book.pageCount} pp`
+                  : null,
           ]
             .filter(Boolean)
             .join(" · ")}

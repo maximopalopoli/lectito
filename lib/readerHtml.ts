@@ -1,3 +1,5 @@
+import { READER_GESTURES_JS } from './readerGestures';
+
 export function getReaderHtml(jszipScript: string, epubScript: string): string {
   const safeJszip = jszipScript.replace(/<\/script/gi, '<\\/script');
   const safeEpub = epubScript.replace(/<\/script/gi, '<\\/script');
@@ -36,8 +38,12 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
   var book = null;
   var rendition = null;
   var currentCfi = null;
+  var currentChapter = '';
   var locationsReady = false;
   var currentFontCss = '';
+  var selectionSent = false;
+  var suppressClickUntil = 0;
+${READER_GESTURES_JS}
 
   function send(msg) {
     var json = JSON.stringify(msg);
@@ -64,6 +70,7 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
       case 'setFontSize': if (rendition) rendition.themes.fontSize(data.size + '%'); break;
       case 'setFontFamily': applyFont(data.family); break;
       case 'highlight': addHighlight(data.cfi, data.color); break;
+      case 'clearSelection': clearSelection(); break;
       case 'ping': send({ type: 'ready' }); break;
     }
   }
@@ -103,6 +110,64 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
         }
       });
 
+      // Gestos dentro de cada documento del libro: tocar los costados o deslizar pasa de página,
+      // tocar el centro muestra/oculta las barras. Mientras hay texto seleccionado, no se navega.
+      rendition.hooks.content.register(function(contents) {
+        var doc = contents.document;
+        var win = contents.window;
+        var touchStart = null;
+        var hadSelection = false;
+
+        function hasSelection() {
+          var sel = win.getSelection();
+          return !!sel && !sel.isCollapsed;
+        }
+
+        doc.addEventListener('touchstart', function(e) {
+          hadSelection = hasSelection();
+          if (e.touches.length !== 1) { touchStart = null; return; }
+          var t = e.touches[0];
+          touchStart = { x: t.clientX, y: t.clientY, time: Date.now() };
+        }, { passive: true });
+
+        doc.addEventListener('touchend', function(e) {
+          var start = touchStart;
+          touchStart = null;
+          if (!start || hadSelection || hasSelection()) return;
+          var t = e.changedTouches[0];
+          var direction = classifySwipe(t.clientX - start.x, t.clientY - start.y, Date.now() - start.time);
+          if (direction) {
+            suppressClickUntil = Date.now() + 500;
+            turnPage(direction);
+          }
+        });
+
+        doc.addEventListener('mousedown', function() {
+          if (hasSelection()) hadSelection = true;
+        });
+
+        doc.addEventListener('click', function(e) {
+          var dismissingSelection = hadSelection;
+          hadSelection = false;
+          if (Date.now() < suppressClickUntil) return;
+          if (dismissingSelection || hasSelection()) return;
+          if (e.target && e.target.closest && e.target.closest('a')) return;
+          // clientX es relativo al iframe del capítulo, que se desplaza con cada página.
+          var frame = win.frameElement;
+          var x = (frame ? frame.getBoundingClientRect().left : 0) + (e.clientX || 0);
+          var zone = tapZone(x, window.innerWidth);
+          if (zone === 'menu') send({ type: 'tap' });
+          else turnPage(zone);
+        });
+
+        doc.addEventListener('selectionchange', function() {
+          if (selectionSent && !hasSelection()) {
+            selectionSent = false;
+            send({ type: 'selectionCleared' });
+          }
+        });
+      });
+
       book.ready.then(function() {
         var toc = book.navigation ? book.navigation.toc.map(function(ch) {
           return { label: ch.label.trim(), href: ch.href };
@@ -130,7 +195,7 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
           if (currentCfi) {
             var percent = book.locations.percentageFromCfi(currentCfi);
             var loc = book.locations.locationFromCfi(currentCfi);
-            send({ type: 'relocated', cfi: currentCfi, page: 0, total: 0, rawPercent: percent, percent: Math.round(percent * 100), chapter: '', location: loc });
+            send({ type: 'relocated', cfi: currentCfi, page: 0, total: 0, rawPercent: percent, percent: Math.round(percent * 100), chapter: currentChapter, location: loc });
           }
         });
       });
@@ -152,6 +217,7 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
             if (navItem) chapter = navItem.label.trim();
           }
         }
+        currentChapter = chapter;
 
         send({
           type: 'relocated',
@@ -170,30 +236,10 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
         book.getRange(cfiRange).then(function(range) {
           var text = range ? range.toString() : '';
           if (text.length > 0) {
+            selectionSent = true;
             send({ type: 'selected', cfi: cfiRange, text: text });
           }
         });
-      });
-
-      // Navigation: on native, RN overlays handle prev/next.
-      // On web (iframe), use click zones since there are no overlays.
-      rendition.on('click', function(e) {
-        var isNative = !!window.ReactNativeWebView;
-        if (isNative) {
-          send({ type: 'tap' });
-          return;
-        }
-        var width = window.innerWidth;
-        var x = e.clientX || 0;
-        if (x < width * 0.3) {
-          rendition.prev();
-          send({ type: 'nav', direction: 'prev' });
-        } else if (x > width * 0.7) {
-          rendition.next();
-          send({ type: 'nav', direction: 'next' });
-        } else {
-          send({ type: 'tap' });
-        }
       });
 
       if (resumeCfi) {
@@ -226,7 +272,17 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
 
   function applyTheme(theme) {
     document.body.className = theme === 'light' ? '' : theme;
-    if (rendition) rendition.themes.select(theme);
+    if (!rendition) return;
+    // epub.js inyecta la hoja de cada tema elegido y nunca saca las anteriores: sin esto,
+    // volver de Oscuro a Claro deja el texto con los colores oscuros (mismas reglas !important).
+    rendition.getContents().forEach(function(c) {
+      ['light', 'dark', 'sepia'].forEach(function(name) {
+        if (name === theme) return;
+        var node = c.document.getElementById('epubjs-inserted-css-' + name);
+        if (node) node.remove();
+      });
+    });
+    rendition.themes.select(theme);
   }
 
   function applyFont(family) {
@@ -247,6 +303,21 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
         style.textContent = currentFontCss;
         doc.head.appendChild(style);
       }
+    });
+  }
+
+  function turnPage(direction) {
+    if (!rendition) return;
+    if (direction === 'next') rendition.next();
+    else rendition.prev();
+    send({ type: 'nav', direction: direction });
+  }
+
+  function clearSelection() {
+    if (!rendition) return;
+    rendition.getContents().forEach(function(c) {
+      var sel = c.window.getSelection();
+      if (sel) sel.removeAllRanges();
     });
   }
 

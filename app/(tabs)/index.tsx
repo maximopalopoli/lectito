@@ -8,9 +8,11 @@ import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCover from "@/components/BookCover";
 import CircleIconButton from "@/components/CircleIconButton";
 import { getGoalProgress, getStreak, getTodayStats } from "@/lib/stats";
+import { readingProgress } from "@/lib/progress";
 import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useGoalsStore } from "@/store/goals";
+import { useReaderSettingsStore } from "@/store/readerSettings";
 import { useSessionsStore } from "@/store/sessions";
 import type { Book } from "@/types/book";
 
@@ -307,12 +309,6 @@ function ProgressBar({ percent, height }: { percent: number; height: number }) {
   );
 }
 
-function bookProgress(book: Book): number {
-  return book.pageCount > 0
-    ? Math.min(100, Math.round((book.currentPage / book.pageCount) * 100))
-    : 0;
-}
-
 function formatLastRead(iso: string): string {
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOfDay(new Date()) - startOfDay(new Date(iso))) / 86_400_000);
@@ -334,7 +330,8 @@ function CurrentBookCard({
   onRead: () => void;
 }) {
   const colors = useTheme();
-  const progress = bookProgress(book);
+  const position = useReaderSettingsStore((s) => s.positions[book.id]);
+  const progress = readingProgress(book, position);
   return (
     <View
       style={{
@@ -366,11 +363,16 @@ function CurrentBookCard({
           >
             {book.authors.join(", ")}
           </Text>
-          {book.pageCount > 0 && (
+          {(book.pageCount > 0 || progress.byPercent) && (
             <View style={{ marginTop: spacing.md }}>
-              <ProgressBar percent={progress} height={6} />
-              <Text style={{ fontSize: fontSize.sm, color: colors.textTertiary, marginTop: spacing.xs }}>
-                Pág. {book.currentPage} de {book.pageCount} · {progress}%
+              <ProgressBar percent={progress.percent} height={6} />
+              <Text
+                style={{ fontSize: fontSize.sm, color: colors.textTertiary, marginTop: spacing.xs }}
+                numberOfLines={1}
+              >
+                {progress.byPercent
+                  ? `${progress.percent}% leído${progress.chapter ? ` · ${progress.chapter}` : ""}`
+                  : `Pág. ${book.currentPage} de ${book.pageCount} · ${progress.percent}%`}
               </Text>
             </View>
           )}
@@ -416,7 +418,8 @@ function ReadingRow({
   onRead: () => void;
 }) {
   const colors = useTheme();
-  const progress = bookProgress(book);
+  const position = useReaderSettingsStore((s) => s.positions[book.id]);
+  const progress = readingProgress(book, position);
   return (
     // Sin accessibilityRole="button": contiene el botón de play, y en web
     // eso generaría un <button> anidado dentro de otro.
@@ -447,12 +450,12 @@ function ReadingRow({
         >
           {book.authors.join(", ")}
         </Text>
-        {book.pageCount > 0 && (
+        {(book.pageCount > 0 || progress.byPercent) && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm }}>
             <View style={{ flex: 1 }}>
-              <ProgressBar percent={progress} height={4} />
+              <ProgressBar percent={progress.percent} height={4} />
             </View>
-            <Text style={{ fontSize: fontSize.xs, color: colors.textTertiary }}>{progress}%</Text>
+            <Text style={{ fontSize: fontSize.xs, color: colors.textTertiary }}>{progress.percent}%</Text>
           </View>
         )}
       </View>

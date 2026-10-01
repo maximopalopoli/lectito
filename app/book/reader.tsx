@@ -35,6 +35,14 @@ const COLOR_OPTIONS: { color: QuoteColor; hex: string }[] = [
   { color: "purple", hex: "#A78BFA" },
 ];
 
+const COLOR_LABELS: Record<QuoteColor, string> = {
+  yellow: "Amarillo",
+  blue: "Azul",
+  green: "Verde",
+  pink: "Rosa",
+  purple: "Violeta",
+};
+
 const THEME_OPTIONS: { label: string; theme: ReaderThemeName; bg: string; fg: string }[] = [
   { label: "Claro", theme: "light", bg: "#ffffff", fg: "#1a1a1a" },
   { label: "Oscuro", theme: "dark", bg: "#1a1a1a", fg: "#e0e0e0" },
@@ -122,8 +130,7 @@ export default function ReaderScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showToc, setShowToc] = useState(false);
   const [showHighlight, setShowHighlight] = useState(false);
-  const [quoteMode, setQuoteMode] = useState(false);
-  const quoteModeRef = useRef(false);
+  const [showQuoteHint, setShowQuoteHint] = useState(false);
   const [toc, setToc] = useState<TocItem[]>([]);
   const [pageInfo, setPageInfo] = useState({ page: 0, total: 0, percent: 0, chapter: "", location: 0 });
 
@@ -158,8 +165,12 @@ export default function ReaderScreen() {
 
   const readerHtml = useMemo(() => getBundledReaderHtml(), []);
 
-  // Keep ref in sync with state
-  useEffect(() => { quoteModeRef.current = quoteMode; }, [quoteMode]);
+  // La pista de "cómo guardar una cita" se oculta sola.
+  useEffect(() => {
+    if (!showQuoteHint) return;
+    const timeout = setTimeout(() => setShowQuoteHint(false), 4000);
+    return () => clearTimeout(timeout);
+  }, [showQuoteHint]);
 
   // Keep screen awake on native
   useEffect(() => {
@@ -343,14 +354,21 @@ export default function ReaderScreen() {
         }
         finalPercentRef.current = msg.rawPercent ?? 0;
         if (bookId && msg.cfi) {
-          useReaderSettingsStore.getState().savePosition(bookId, msg.cfi);
+          useReaderSettingsStore.getState().savePosition(bookId, msg.cfi, {
+            percent: msg.rawPercent ?? 0,
+            chapter: (msg.chapter ?? "").trim(),
+          });
         }
         break;
 
       case "selected":
-        if (!quoteModeRef.current) break;
         setPendingQuote({ text: msg.text ?? "", cfi: msg.cfi ?? "" });
+        setShowQuoteHint(false);
         Haptics.selectionAsync();
+        break;
+
+      case "selectionCleared":
+        setPendingQuote(null);
         break;
 
       case "nav":
@@ -359,7 +377,7 @@ export default function ReaderScreen() {
         break;
 
       case "tap":
-        if (!quoteModeRef.current) setToolbarVisible((v) => !v);
+        setToolbarVisible((v) => !v);
         break;
 
       case "error":
@@ -375,7 +393,7 @@ export default function ReaderScreen() {
     sendToWebView({ type: "highlight", cfi: selectedCfi, color: highlightColor });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setShowHighlight(false);
-    setQuoteMode(false);
+    sendToWebView({ type: "clearSelection" });
   }
 
   function handleConfirmQuote() {
@@ -385,14 +403,12 @@ export default function ReaderScreen() {
     setHighlightColor("yellow");
     setHighlightNote("");
     setPendingQuote(null);
-    setQuoteMode(false);
     setShowHighlight(true);
   }
 
   function handleCancelHighlight() {
     setShowHighlight(false);
-    setQuoteMode(false);
-    setPendingQuote(null);
+    sendToWebView({ type: "clearSelection" });
   }
 
   /** Menos de un minuto sin pasar páginas: se abrió para mirar, no hay sesión que registrar. */
@@ -451,6 +467,8 @@ export default function ReaderScreen() {
   // Acentos de la app según el tema del lector (no el del sistema), para que contrasten con el fondo.
   const ui = readerSettings.theme === "dark" ? darkColors : lightColors;
   const currentChapter = pageInfo.chapter.trim();
+  const panelBg = readerSettings.theme === "dark" ? "#262626" : readerSettings.theme === "sepia" ? "#ebe1c9" : "#f5f5f5";
+  const dividerColor = readerSettings.theme === "dark" ? "#444" : readerSettings.theme === "sepia" ? "#d8ccb0" : "#ddd";
 
   return (
     <View style={{ flex: 1, backgroundColor: themeBg }}>
@@ -488,10 +506,10 @@ export default function ReaderScreen() {
         </Text>
         <View style={{ flexDirection: "row" }}>
           <ToolbarButton
-            icon="pencil-outline"
-            label="Guardar una cita"
+            icon="bookmark-outline"
+            label="Cómo guardar una cita"
             color={ui.primary}
-            onPress={() => { setQuoteMode(true); setToolbarVisible(false); }}
+            onPress={() => setShowQuoteHint(true)}
           />
           <ToolbarButton icon="list-outline" label="Tabla de contenidos" color={ui.primary} onPress={() => setShowToc(true)} />
           <ToolbarButton icon="text-outline" label="Ajustes de lectura" color={ui.primary} onPress={() => setShowSettings(true)} />
@@ -502,7 +520,7 @@ export default function ReaderScreen() {
       <View style={{ flex: 1 }}>
         {loading && !readerError && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator size="large" color="#007AFF" />
+            <ActivityIndicator size="large" color={ui.primary} />
           </View>
         )}
         {readerError && (
@@ -525,97 +543,61 @@ export default function ReaderScreen() {
             style={{ flex: 1, backgroundColor: themeBg }}
           />
         )}
-        {/* Navigation overlays — disabled in quote mode so user can select text */}
-        {!loading && !isWeb && !quoteMode && (
-          <>
-            <View
-              style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "30%" }}
-              pointerEvents="box-none"
-            >
-              <Pressable
-                onPress={() => { netPagesRef.current -= 1; sendToWebView({ type: "prev" }); }}
-                style={{ flex: 1 }}
-                android_disableSound
-              />
-            </View>
-            <View
-              style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "30%" }}
-              pointerEvents="box-none"
-            >
-              <Pressable
-                onPress={() => { netPagesRef.current += 1; sendToWebView({ type: "next" }); }}
-                style={{ flex: 1 }}
-                android_disableSound
-              />
-            </View>
-          </>
-        )}
       </View>
 
-      {/* Quote mode hint — top, absolutely positioned */}
-      {quoteMode && (
+      {/* Selección de texto → guardar como cita */}
+      {pendingQuote && !showHighlight && (
         <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            paddingTop: insets.top + 12,
-            paddingBottom: 8,
-            paddingHorizontal: 16,
-            backgroundColor: "#FBBF24",
-            zIndex: 20,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 12, color: "#666" }}>
-            Mantené presionado para seleccionar texto
-          </Text>
-        </View>
-      )}
-
-      {/* Quote mode buttons — bottom, absolutely positioned */}
-      {quoteMode && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            backgroundColor: "#FBBF24",
-            paddingBottom: 30,
-            zIndex: 20,
-            flexDirection: "row",
-            gap: 12,
-          }}
+          pointerEvents="box-none"
+          style={{ position: "absolute", left: 0, right: 0, bottom: insets.bottom + 64, alignItems: "center", zIndex: 20 }}
         >
           <Pressable
             onPress={handleConfirmQuote}
-            disabled={!pendingQuote}
+            accessibilityRole="button"
+            accessibilityLabel="Guardar la selección como cita"
             style={{
-              flex: 1,
-              paddingVertical: 10,
-              borderRadius: 8,
-              backgroundColor: pendingQuote ? "#34C759" : "#ccc",
+              flexDirection: "row",
               alignItems: "center",
+              gap: 8,
+              minHeight: 44,
+              paddingHorizontal: 18,
+              borderRadius: 22,
+              backgroundColor: ui.primary,
+              shadowColor: "#000",
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 4,
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>Guardar cita</Text>
+            <Ionicons name="bookmark-outline" size={18} color={ui.onPrimary} />
+            <Text style={{ color: ui.onPrimary, fontSize: 15, fontWeight: "600" }}>Guardar cita</Text>
           </Pressable>
-          <Pressable
-            onPress={() => { setQuoteMode(false); setPendingQuote(null); }}
+        </View>
+      )}
+
+      {/* Pista: cómo se guarda una cita */}
+      {showQuoteHint && !pendingQuote && (
+        <View
+          pointerEvents="none"
+          style={{ position: "absolute", left: 16, right: 16, bottom: insets.bottom + 64, alignItems: "center", zIndex: 20 }}
+        >
+          <View
             style={{
-              paddingVertical: 10,
-              paddingHorizontal: 16,
-              borderRadius: 8,
-              backgroundColor: "rgba(0,0,0,0.1)",
+              flexDirection: "row",
               alignItems: "center",
+              gap: 8,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 12,
+              backgroundColor: readerSettings.theme === "dark" ? "#333" : "#1a1a1a",
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#FF3B30" }}>Cancelar</Text>
-          </Pressable>
+            <Ionicons name="finger-print-outline" size={18} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 14, flexShrink: 1 }}>
+              {isWeb ? "Seleccioná un texto" : "Mantené presionado un texto"} para guardarlo como cita
+            </Text>
+          </View>
         </View>
       )}
 
@@ -631,9 +613,9 @@ export default function ReaderScreen() {
           borderTopWidth: 1,
           borderTopColor: readerSettings.theme === "dark" ? "#333" : "#e0e0e0",
           paddingBottom: 20,
-          opacity: toolbarVisible && !quoteMode ? 1 : 0,
+          opacity: toolbarVisible ? 1 : 0,
         }}
-        pointerEvents={toolbarVisible && !quoteMode ? "auto" : "none"}
+        pointerEvents={toolbarVisible ? "auto" : "none"}
       >
         <Text style={{ fontSize: 13, color: themeFg }}>
           {pageInfo.chapter ? `${pageInfo.chapter} · ` : ""}
@@ -795,7 +777,7 @@ export default function ReaderScreen() {
                   borderRadius: 8,
                   backgroundColor: opt.bg,
                   borderWidth: 2,
-                  borderColor: readerSettings.theme === opt.theme ? "#007AFF" : "#ddd",
+                  borderColor: readerSettings.theme === opt.theme ? ui.primary : "#ddd",
                   alignItems: "center",
                 }}
               >
@@ -819,15 +801,15 @@ export default function ReaderScreen() {
                   paddingVertical: 8,
                   borderRadius: 8,
                   borderWidth: 1,
-                  borderColor: readerSettings.fontFamily === opt.value ? "#007AFF" : "#ddd",
-                  backgroundColor: readerSettings.fontFamily === opt.value ? "#007AFF" : "transparent",
+                  borderColor: readerSettings.fontFamily === opt.value ? ui.primary : "#ddd",
+                  backgroundColor: readerSettings.fontFamily === opt.value ? ui.primary : "transparent",
                   alignItems: "center",
                 }}
               >
                 <Text
                   style={{
                     fontSize: 12,
-                    color: readerSettings.fontFamily === opt.value ? "#fff" : themeFg,
+                    color: readerSettings.fontFamily === opt.value ? ui.onPrimary : themeFg,
                     fontWeight: readerSettings.fontFamily === opt.value ? "600" : "400",
                   }}
                 >
@@ -913,92 +895,118 @@ export default function ReaderScreen() {
       </Modal>
 
       {/* Highlight modal */}
-      <Modal visible={showHighlight} transparent animationType="fade">
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
-          onPress={handleCancelHighlight}
+      <Modal visible={showHighlight} transparent animationType="fade" onRequestClose={handleCancelHighlight}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1 }}
         >
           <Pressable
-            onPress={() => {}}
-            style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 24,
-              paddingBottom: 40,
-            }}
+            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+            onPress={handleCancelHighlight}
           >
-            <Text style={{ fontSize: 17, fontWeight: "bold", marginBottom: 12 }}>
-              Guardar cita
-            </Text>
-
-            {/* Selected text preview */}
-            <View
-              style={{
-                backgroundColor: "#f5f5f5",
-                borderRadius: 8,
-                padding: 12,
-                marginBottom: 16,
-                borderLeftWidth: 4,
-                borderLeftColor: COLOR_OPTIONS.find((c) => c.color === highlightColor)?.hex ?? "#FBBF24",
-              }}
-            >
-              <Text style={{ fontSize: 14, fontStyle: "italic", lineHeight: 20 }} numberOfLines={5}>
-                &ldquo;{selectedText}&rdquo;
-              </Text>
-            </View>
-
-            {/* Color picker */}
-            <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
-              {COLOR_OPTIONS.map((opt) => (
-                <Pressable
-                  key={opt.color}
-                  onPress={() => setHighlightColor(opt.color)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: opt.hex,
-                    borderWidth: 3,
-                    borderColor: highlightColor === opt.color ? "#333" : "transparent",
-                  }}
-                />
-              ))}
-            </View>
-
-            {/* Note input */}
-            <TextInput
-              value={highlightNote}
-              onChangeText={setHighlightNote}
-              placeholder="Nota (opcional)"
-              multiline
-              style={{
-                borderWidth: 1,
-                borderColor: "#ddd",
-                borderRadius: 8,
-                padding: 10,
-                fontSize: 14,
-                minHeight: 60,
-                marginBottom: 16,
-              }}
-            />
-
-            {/* Save button */}
             <Pressable
-              onPress={handleSaveHighlight}
+              onPress={() => {}}
               style={{
-                backgroundColor: "#34C759",
-                paddingVertical: 14,
-                borderRadius: 10,
-                alignItems: "center",
+                backgroundColor: themeBg,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                padding: 24,
+                paddingBottom: insets.bottom + 24,
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>
-                Guardar cita
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                <Text style={{ flex: 1, fontSize: 17, fontWeight: "bold", color: themeFg }}>Guardar cita</Text>
+                <Pressable
+                  onPress={handleCancelHighlight}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar"
+                  hitSlop={8}
+                  style={{ width: 44, height: 44, alignItems: "flex-end", justifyContent: "center" }}
+                >
+                  <Ionicons name="close" size={24} color={themeFg} />
+                </Pressable>
+              </View>
+
+              {/* Selected text preview */}
+              <View
+                style={{
+                  backgroundColor: panelBg,
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 16,
+                  borderLeftWidth: 4,
+                  borderLeftColor: COLOR_OPTIONS.find((c) => c.color === highlightColor)?.hex ?? "#FBBF24",
+                }}
+              >
+                <Text style={{ fontSize: 14, fontStyle: "italic", lineHeight: 20, color: themeFg }} numberOfLines={5}>
+                  &ldquo;{selectedText}&rdquo;
+                </Text>
+              </View>
+
+              {/* Color picker */}
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+                {COLOR_OPTIONS.map((opt) => {
+                  const selected = highlightColor === opt.color;
+                  return (
+                    <Pressable
+                      key={opt.color}
+                      onPress={() => setHighlightColor(opt.color)}
+                      accessibilityRole="radio"
+                      accessibilityLabel={COLOR_LABELS[opt.color]}
+                      accessibilityState={{ selected }}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        borderWidth: 2,
+                        borderColor: selected ? themeFg : "transparent",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: opt.hex }} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Note input */}
+              <TextInput
+                value={highlightNote}
+                onChangeText={setHighlightNote}
+                placeholder="Nota (opcional)"
+                placeholderTextColor="#888"
+                multiline
+                style={{
+                  borderWidth: 1,
+                  borderColor: dividerColor,
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 14,
+                  minHeight: 60,
+                  marginBottom: 16,
+                  color: themeFg,
+                  textAlignVertical: "top",
+                }}
+              />
+
+              {/* Save button */}
+              <Pressable
+                onPress={handleSaveHighlight}
+                style={{
+                  backgroundColor: ui.primary,
+                  paddingVertical: 14,
+                  borderRadius: 10,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: ui.onPrimary, fontWeight: "600", fontSize: 16 }}>
+                  Guardar cita
+                </Text>
+              </Pressable>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

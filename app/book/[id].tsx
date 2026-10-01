@@ -17,9 +17,11 @@ import ReviewModal from "@/components/ReviewModal";
 import StarRating from "@/components/StarRating";
 import TagBadge from "@/components/TagBadge";
 import TagsModal from "@/components/TagsModal";
+import { readingProgress } from "@/lib/progress";
 import { useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useQuotesStore } from "@/store/quotes";
+import { useReaderSettingsStore } from "@/store/readerSettings";
 import { useSessionsStore } from "@/store/sessions";
 import type { BookStatus, QuoteColor } from "@/types";
 
@@ -51,6 +53,7 @@ export default function BookDetailScreen() {
   const allQuotes = useQuotesStore((s) => s.quotes);
 
   const book = useMemo(() => books.find((b) => b.id === id), [books, id]);
+  const readerPosition = useReaderSettingsStore((s) => (id ? s.positions[id] : undefined));
   const sessions = useMemo(() => allSessions.filter((s) => s.bookId === id), [allSessions, id]);
   const quotes = useMemo(
     () =>
@@ -106,7 +109,7 @@ export default function BookDetailScreen() {
     ]);
   };
 
-  const progress = book.pageCount > 0 ? book.currentPage / book.pageCount : 0;
+  const progress = readingProgress(book, readerPosition);
 
   const handleSavePage = () => {
     const page = parseInt(pageInput, 10);
@@ -171,7 +174,12 @@ export default function BookDetailScreen() {
           }}
         >
           <InfoChip label="Estado" value={STATUS_LABEL[book.status]} />
-          <InfoChip label="Páginas" value={String(book.pageCount)} />
+          {/* El "conteo de páginas" de un ePub son locations de epub.js, no páginas reales. */}
+          {book.epubUri ? (
+            <InfoChip label="Formato" value="ePub" />
+          ) : (
+            <InfoChip label="Páginas" value={String(book.pageCount)} />
+          )}
           {book.isbn13 && <InfoChip label="ISBN" value={book.isbn13} />}
         </View>
 
@@ -195,15 +203,16 @@ export default function BookDetailScreen() {
             <View
               style={{
                 height: 8,
-                width: `${Math.min(progress * 100, 100)}%`,
+                width: `${progress.percent}%`,
                 backgroundColor: colors.primary,
                 borderRadius: 4,
               }}
             />
           </View>
           <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 4 }}>
-            Página {book.currentPage} de {book.pageCount} (
-            {Math.round(progress * 100)}%)
+            {progress.byPercent
+              ? `${progress.percent}% leído${progress.chapter ? ` · ${progress.chapter}` : ""}`
+              : `Página ${book.currentPage} de ${book.pageCount} (${progress.percent}%)`}
           </Text>
         </View>
 
@@ -253,7 +262,7 @@ export default function BookDetailScreen() {
           {hasEpub && (book.status === "TBR" || book.status === "READING") && (
             <ActionButton
               icon="reader-outline"
-              label={book.status === "TBR" ? "Empezar a leer el ePub" : "Seguir leyendo el ePub"}
+              label={book.status === "TBR" && progress.percent === 0 ? "Empezar a leer el ePub" : "Seguir leyendo el ePub"}
               onPress={openReader}
             />
           )}
@@ -275,12 +284,15 @@ export default function BookDetailScreen() {
                 onPress={() => router.push(`/session/${book.id}`)}
               />
               <View style={{ flexDirection: "row", gap: 10 }}>
-                <ActionButton
-                  variant="secondary"
-                  icon="create-outline"
-                  label="Progreso"
-                  onPress={() => setShowPageInput(!showPageInput)}
-                />
+                {/* En un ePub el avance lo registra el lector; no hay "página" que cargar a mano. */}
+                {!hasEpub && (
+                  <ActionButton
+                    variant="secondary"
+                    icon="create-outline"
+                    label="Progreso"
+                    onPress={() => setShowPageInput(!showPageInput)}
+                  />
+                )}
                 <ActionButton
                   variant="secondary"
                   icon="checkmark-circle-outline"
