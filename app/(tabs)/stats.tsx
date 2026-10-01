@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import CircleIconButton from "@/components/CircleIconButton";
 import Heatmap from "@/components/Heatmap";
 import {
   getBestStreak,
@@ -103,62 +104,40 @@ export default function StatsScreen() {
         paddingBottom: 40,
       }}
     >
-      <Text style={{ fontSize: 24, fontWeight: "bold", color: colors.textPrimary, marginBottom: 24 }}>
-        Estadísticas
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>
+          Estadísticas
+        </Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <CircleIconButton
+            icon="share-outline"
+            label="Compartir mi resumen"
+            onPress={() => router.push("/share-stats")}
+          />
+          <CircleIconButton
+            icon="cloud-upload-outline"
+            label="Backup de datos"
+            onPress={() => router.push("/settings/backup")}
+          />
+        </View>
+      </View>
 
       {/* Weekly summary */}
       <SectionTitle>Esta semana</SectionTitle>
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        <StatCard label="Minutos" value={weekly.totalMinutes} />
-        <StatCard label="Sesiones" value={weekly.totalSessions} />
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <StatCard label="minutos" value={weekly.totalMinutes} />
+        <StatCard label="sesiones" value={weekly.totalSessions} />
+        <StatCard label="pág/día" value={pagesPerDay7} hint={`30 d: ${pagesPerDay30}`} />
       </View>
 
       {/* Goal progress */}
       <GoalSection sessions={sessions} goal={goal} router={router} />
 
-      {/* Pages per day */}
-      <SectionTitle>Páginas/día promedio</SectionTitle>
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        <StatCard label="Últimos 7 días" value={pagesPerDay7} />
-        <StatCard label="Últimos 30 días" value={pagesPerDay30} />
-      </View>
-
       {/* Streak */}
       <SectionTitle>Racha de lectura</SectionTitle>
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: colors.surface,
-            borderRadius: 12,
-            padding: 16,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 32, fontWeight: "bold", color: colors.warning }}>
-            {streak}
-          </Text>
-          <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
-            racha actual
-          </Text>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: colors.surface,
-            borderRadius: 12,
-            padding: 16,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 32, fontWeight: "bold", color: colors.warning }}>
-            {bestStreak}
-          </Text>
-          <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
-            mejor racha
-          </Text>
-        </View>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <StatCard label={streak === 1 ? "día seguido" : "días seguidos"} value={streak} color={colors.warning} />
+        <StatCard label="mejor racha" value={bestStreak} color={colors.warning} />
       </View>
 
       {/* Heatmap */}
@@ -166,7 +145,7 @@ export default function StatsScreen() {
       <Heatmap data={heatmapData} />
 
       {/* Minutes chart */}
-      <SectionTitle>Minutos por día (últimos 7 días)</SectionTitle>
+      <SectionTitle>Minutos por día</SectionTitle>
       <View
         style={{
           backgroundColor: colors.surface,
@@ -174,6 +153,9 @@ export default function StatsScreen() {
           padding: 16,
         }}
       >
+        {!dailyMinutes.some((d) => d.minutes > 0) && (
+          <ChartEmptyNote text="No registraste lectura en los últimos 7 días." />
+        )}
         <View
           style={{
             flexDirection: "row",
@@ -195,7 +177,7 @@ export default function StatsScreen() {
       </View>
 
       {/* Books per month */}
-      <SectionTitle>Libros terminados</SectionTitle>
+      <SectionTitle>Libros terminados por mes</SectionTitle>
       <View
         style={{
           backgroundColor: colors.surface,
@@ -203,6 +185,9 @@ export default function StatsScreen() {
           padding: 16,
         }}
       >
+        {!monthlyBooks.some((m) => m.count > 0) && (
+          <ChartEmptyNote text="Ningún libro terminado en estos meses." />
+        )}
         <View
           style={{
             flexDirection: "row",
@@ -223,39 +208,6 @@ export default function StatsScreen() {
         </View>
       </View>
 
-      {/* Share stats */}
-      <AnimatedPressable
-        onPress={() => router.push("/share-stats")}
-        haptic="medium"
-        style={{
-          backgroundColor: colors.accent,
-          borderRadius: 12,
-          paddingVertical: 14,
-          alignItems: "center",
-          marginTop: 32,
-        }}
-      >
-        <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>
-          Compartir mi resumen
-        </Text>
-      </AnimatedPressable>
-
-      {/* Backup */}
-      <AnimatedPressable
-        onPress={() => router.push("/settings/backup")}
-        haptic="light"
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          marginTop: 32,
-          paddingVertical: 12,
-        }}
-      >
-        <Ionicons name="cloud-download-outline" size={18} color={colors.textTertiary} />
-        <Text style={{ fontSize: 14, color: colors.textTertiary }}>Backup</Text>
-      </AnimatedPressable>
     </ScrollView>
   );
 }
@@ -381,7 +333,17 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  color,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+  color?: string;
+}) {
   const colors = useTheme();
   return (
     <View
@@ -389,17 +351,32 @@ function StatCard({ label, value }: { label: string; value: number }) {
         flex: 1,
         backgroundColor: colors.surface,
         borderRadius: 12,
-        padding: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 8,
         alignItems: "center",
       }}
     >
-      <Text style={{ fontSize: 32, fontWeight: "bold", color: colors.primary }}>
+      <Text style={{ fontSize: 28, fontWeight: "bold", color: color ?? colors.primary }}>
         {value}
       </Text>
-      <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
+      <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
         {label}
       </Text>
+      {hint && (
+        <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }} numberOfLines={1}>
+          {hint}
+        </Text>
+      )}
     </View>
+  );
+}
+
+function ChartEmptyNote({ text }: { text: string }) {
+  const colors = useTheme();
+  return (
+    <Text style={{ fontSize: 13, color: colors.textTertiary, textAlign: "center", marginBottom: 8 }}>
+      {text}
+    </Text>
   );
 }
 

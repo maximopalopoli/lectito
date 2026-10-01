@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import {
   ActivityIndicator,
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -15,10 +14,12 @@ import * as Haptics from "expo-haptics";
 import { randomUUID } from "expo-crypto";
 
 import * as DocumentPicker from "expo-document-picker";
+import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
 import BarcodeScanner from "@/components/BarcodeScanner";
-import { useTheme } from "@/lib/theme";
+import BookCover from "@/components/BookCover";
+import { radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
 import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
@@ -47,6 +48,7 @@ export default function AddBookScreen() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [selected, setSelected] = useState<BookSearchResult | null>(null);
   const [status, setStatus] = useState<BookStatus>("TBR");
@@ -60,6 +62,7 @@ export default function AddBookScreen() {
 
       setLoading(true);
       setError(null);
+      setNotFound(false);
       setResults([]);
       setSelected(null);
 
@@ -83,7 +86,7 @@ export default function AddBookScreen() {
         }
 
         if (found.length === 0) {
-          setError("No se encontraron resultados");
+          setNotFound(true);
         } else {
           setResults(found);
           if (found.length === 1) {
@@ -99,15 +102,19 @@ export default function AddBookScreen() {
     [query],
   );
 
-  const handleAdd = () => {
-    if (!selected) return;
-    addBook({ ...selected, status, epubUri });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const goBack = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace('/(tabs)');
     }
+  };
+
+  const handleAdd = () => {
+    if (!selected) return;
+    addBook({ ...selected, status, epubUri });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    goBack();
   };
 
   const handleImportEpub = useCallback(async () => {
@@ -121,6 +128,7 @@ export default function AddBookScreen() {
 
       setLoading(true);
       setError(null);
+      setNotFound(false);
       setResults([]);
       setSelected(null);
       setEpubUri(null);
@@ -160,6 +168,9 @@ export default function AddBookScreen() {
     );
   }
 
+  const canSearch = !loading && query.trim().length > 0;
+  const idle = !loading && !error && !notFound && results.length === 0;
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -171,159 +182,174 @@ export default function AddBookScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingTop: insets.top + 16,
-          paddingHorizontal: 16,
-          paddingBottom: 12,
+          paddingTop: insets.top + 8,
+          paddingHorizontal: 8,
+          paddingBottom: 8,
         }}
       >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
+        <Pressable
+          onPress={goBack}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          hitSlop={4}
+          style={{ width: 44, height: 44, justifyContent: "center", alignItems: "center" }}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.primary} />
         </Pressable>
-      </View>
-
-      <View style={{ paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.textPrimary, marginBottom: 16 }}>
+        <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.textPrimary, marginLeft: 4 }}>
           Agregar libro
         </Text>
+      </View>
 
-        {/* Search input */}
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="ISBN o título del libro"
-            placeholderTextColor={colors.textTertiary}
-            returnKeyType="search"
-            onSubmitEditing={() => handleSearch()}
+      <View style={{ paddingHorizontal: spacing.lg }}>
+        {/* Search */}
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          <View
             style={{
               flex: 1,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: 8,
-              padding: 10,
-              fontSize: 15,
-              color: colors.textPrimary,
-            }}
-          />
-          {Platform.OS !== "web" && (
-            <Pressable
-              onPress={() => setShowScanner(true)}
-              style={{
-                backgroundColor: colors.surface,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                borderRadius: 8,
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ fontSize: 20 }}>📷</Text>
-            </Pressable>
-          )}
-          <Pressable
-            onPress={() => handleSearch()}
-            disabled={loading || !query.trim()}
-            style={{
-              backgroundColor: loading || !query.trim() ? "#a0c4ff" : colors.primary,
-              paddingHorizontal: 16,
-              paddingVertical: 10,
-              borderRadius: 8,
-              justifyContent: "center",
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: colors.surface,
+              borderRadius: radius.lg,
+              paddingLeft: spacing.md,
+              minHeight: 48,
             }}
           >
-            <Text style={{ color: colors.onPrimary, fontWeight: "600" }}>Buscar</Text>
-          </Pressable>
+            <Ionicons name="search" size={18} color={colors.textTertiary} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Título, autor o ISBN"
+              placeholderTextColor={colors.textTertiary}
+              returnKeyType="search"
+              autoFocus={Platform.OS !== "web"}
+              onSubmitEditing={() => handleSearch()}
+              accessibilityLabel="Buscar libro"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.md,
+                fontSize: 16,
+                color: colors.textPrimary,
+              }}
+            />
+            {query.length > 0 && (
+              <Pressable
+                onPress={() => setQuery("")}
+                accessibilityRole="button"
+                accessibilityLabel="Borrar búsqueda"
+                style={{ width: 40, height: 44, justifyContent: "center", alignItems: "center" }}
+              >
+                <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
+              </Pressable>
+            )}
+          </View>
+          <AnimatedPressable
+            onPress={() => handleSearch()}
+            disabled={!canSearch}
+            haptic="light"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSearch }}
+            style={{
+              backgroundColor: colors.primary,
+              opacity: canSearch ? 1 : 0.4,
+              paddingHorizontal: spacing.lg,
+              borderRadius: radius.lg,
+              justifyContent: "center",
+              minHeight: 48,
+            }}
+          >
+            <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>Buscar</Text>
+          </AnimatedPressable>
         </View>
 
-        {/* Import ePub */}
-        <Pressable
-          onPress={handleImportEpub}
-          disabled={loading}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
-            marginBottom: 16,
-            opacity: loading ? 0.5 : 1,
-          }}
-        >
-          <Text style={{ fontSize: 16 }}>📄</Text>
-          <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: "500" }}>
-            Importar desde ePub
-          </Text>
-        </Pressable>
+        {/* Other ways to add (only before any search) */}
+        {idle && (
+          <View style={{ marginTop: spacing.xl }}>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: spacing.md }}>
+              Otras formas de agregar
+            </Text>
+            {Platform.OS !== "web" && (
+              <OptionCard
+                icon="barcode-outline"
+                title="Escanear código de barras"
+                subtitle="Apuntá la cámara al ISBN de la contratapa"
+                onPress={() => setShowScanner(true)}
+              />
+            )}
+            <OptionCard
+              icon="document-text-outline"
+              title="Importar un ePub"
+              subtitle="Usa los datos del archivo y lo leés en la app"
+              onPress={handleImportEpub}
+            />
+          </View>
+        )}
 
         {/* Loading */}
         {loading && (
           <ActivityIndicator
             size="large"
             color={colors.primary}
-            style={{ marginTop: 32 }}
+            style={{ marginTop: 48 }}
           />
         )}
 
+        {/* Not found */}
+        {!loading && notFound && (
+          <View style={{ alignItems: "center", marginTop: 48, paddingHorizontal: spacing.lg }}>
+            <Ionicons name="search-outline" size={40} color={colors.icon} />
+            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.textSecondary, marginTop: spacing.md }}>
+              Sin resultados
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.textTertiary, textAlign: "center", marginTop: spacing.xs }}>
+              Probá con otro título, solo el apellido del autor o el ISBN.
+            </Text>
+          </View>
+        )}
+
         {/* Error */}
-        {error && (
-          <View style={{ alignItems: "center", marginTop: 24 }}>
-            <Text style={{ color: colors.danger, fontSize: 15, textAlign: "center" }}>
+        {!loading && error && (
+          <View style={{ alignItems: "center", marginTop: 48, paddingHorizontal: spacing.lg }}>
+            <Ionicons name="cloud-offline-outline" size={40} color={colors.icon} />
+            <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: "center", marginTop: spacing.md }}>
               {error}
             </Text>
-            <Pressable onPress={() => handleSearch()} style={{ marginTop: 12 }}>
-              <Text style={{ color: colors.primary, fontSize: 15 }}>Reintentar</Text>
+            <Pressable onPress={() => handleSearch()} style={{ marginTop: spacing.md, minHeight: 44, justifyContent: "center" }}>
+              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: "600" }}>Reintentar</Text>
             </Pressable>
           </View>
         )}
 
         {/* Results list (when multiple and none selected) */}
         {!loading && !error && results.length > 1 && !selected && (
-          <View>
-            <Text style={{ fontSize: 15, color: colors.textSecondary, marginBottom: 8 }}>
-              {results.length} resultados — elegí uno:
+          <View style={{ marginTop: spacing.xl }}>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: spacing.md }}>
+              {results.length} resultados
             </Text>
             {results.map((item, index) => (
-              <Pressable
+              <AnimatedPressable
                 key={`${item.isbn13 ?? item.isbn10 ?? item.title}-${index}`}
                 onPress={() => setSelected(item)}
+                haptic="light"
+                accessibilityRole="button"
+                accessibilityLabel={`${item.title}, ${item.authors.join(", ")}`}
                 style={{
                   flexDirection: "row",
-                  padding: 12,
-                  borderWidth: 1,
-                  borderColor: colors.borderLight,
-                  borderRadius: 8,
-                  marginBottom: 8,
-                  gap: 12,
+                  padding: spacing.md,
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.xl,
+                  marginBottom: spacing.sm,
+                  gap: spacing.md,
                   alignItems: "center",
                 }}
               >
-                {item.coverUrl ? (
-                  <Image
-                    source={{ uri: item.coverUrl }}
-                    style={{ width: 40, height: 60, borderRadius: 4 }}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 40,
-                      height: 60,
-                      borderRadius: 4,
-                      backgroundColor: colors.borderLight,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ fontSize: 20 }}>📖</Text>
-                  </View>
-                )}
+                <BookCover uri={item.coverUrl} width={40} height={60} radius={4} />
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary }}
-                    numberOfLines={1}
+                    numberOfLines={2}
                   >
                     {item.title}
                   </Text>
@@ -339,47 +365,30 @@ export default function AddBookScreen() {
                     </Text>
                   )}
                 </View>
-              </Pressable>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </AnimatedPressable>
             ))}
           </View>
         )}
 
         {/* Selected book preview */}
         {selected && (
-          <View style={{ marginTop: 8 }}>
+          <View style={{ marginTop: spacing.lg }}>
             {results.length > 1 && (
               <Pressable
                 onPress={() => setSelected(null)}
-                style={{ marginBottom: 12 }}
+                style={{ flexDirection: "row", alignItems: "center", minHeight: 44, marginBottom: spacing.xs }}
               >
+                <Ionicons name="chevron-back" size={16} color={colors.primary} />
                 <Text style={{ color: colors.primary, fontSize: 14 }}>
-                  ← Volver a resultados
+                  Ver todos los resultados
                 </Text>
               </Pressable>
             )}
 
             {/* Cover */}
-            <View style={{ alignItems: "center", marginBottom: 16 }}>
-              {selected.coverUrl ? (
-                <Image
-                  source={{ uri: selected.coverUrl }}
-                  style={{ width: 140, height: 210, borderRadius: 8 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 140,
-                    height: 210,
-                    borderRadius: 8,
-                    backgroundColor: colors.borderLight,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ fontSize: 48 }}>📖</Text>
-                </View>
-              )}
+            <View style={{ alignItems: "center", marginBottom: spacing.lg }}>
+              <BookCover uri={selected.coverUrl} width={140} height={210} radius={8} />
             </View>
 
             {/* Info */}
@@ -403,36 +412,41 @@ export default function AddBookScreen() {
             >
               {selected.authors.join(", ")}
             </Text>
-            {selected.pageCount > 0 && (
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: colors.textTertiary,
-                  textAlign: "center",
-                  marginTop: 4,
-                }}
-              >
-                {selected.pageCount} páginas
-              </Text>
-            )}
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textTertiary,
+                textAlign: "center",
+                marginTop: 4,
+              }}
+            >
+              {[
+                selected.pageCount > 0 ? `${selected.pageCount} páginas` : null,
+                epubUri ? "ePub adjunto" : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </Text>
 
             {/* Shelf picker */}
             <Text
               style={{
                 fontSize: 15,
                 fontWeight: "600",
-                color: colors.textPrimary,
-                marginTop: 24,
-                marginBottom: 8,
+                color: colors.textSecondary,
+                marginTop: spacing.xl,
+                marginBottom: spacing.sm,
               }}
             >
-              Estantería
+              ¿En qué estantería?
             </Text>
             <View
+              accessibilityRole="radiogroup"
               style={{
                 flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 8,
+                backgroundColor: colors.surface,
+                borderRadius: radius.lg,
+                padding: 3,
               }}
             >
               {SHELVES.map((shelf) => {
@@ -446,20 +460,23 @@ export default function AddBookScreen() {
                     }}
                     haptic="none"
                     scaleDown={0.95}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive }}
                     style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: isActive ? colors.primary : colors.border,
-                      backgroundColor: isActive ? colors.primary : colors.background,
+                      flex: 1,
+                      minHeight: 40,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      borderRadius: radius.md,
+                      backgroundColor: isActive ? colors.primary : "transparent",
                     }}
                   >
                     <Text
+                      numberOfLines={1}
                       style={{
-                        fontSize: 14,
-                        color: isActive ? colors.onPrimary : colors.textPrimary,
-                        fontWeight: isActive ? "600" : "400",
+                        fontSize: 13,
+                        color: isActive ? colors.onPrimary : colors.textSecondary,
+                        fontWeight: isActive ? "600" : "500",
                       }}
                     >
                       {shelf.label}
@@ -473,21 +490,76 @@ export default function AddBookScreen() {
             <AnimatedPressable
               onPress={handleAdd}
               haptic="none"
+              accessibilityRole="button"
               style={{
-                backgroundColor: colors.success,
-                paddingVertical: 14,
-                borderRadius: 10,
+                backgroundColor: colors.primary,
+                minHeight: 50,
+                borderRadius: radius.lg,
+                flexDirection: "row",
                 alignItems: "center",
-                marginTop: 24,
+                justifyContent: "center",
+                gap: spacing.sm,
+                marginTop: spacing.xl,
               }}
             >
+              <Ionicons name="add" size={20} color={colors.onPrimary} />
               <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 16 }}>
-                Agregar a biblioteca
+                Agregar a la biblioteca
               </Text>
             </AnimatedPressable>
           </View>
         )}
       </View>
     </ScrollView>
+  );
+}
+
+function OptionCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  const colors = useTheme();
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      haptic="light"
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={subtitle}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: colors.surface,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        marginBottom: spacing.sm,
+        gap: spacing.md,
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: colors.primaryTint,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Ionicons name={icon} size={20} color={colors.primary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textPrimary }}>{title}</Text>
+        <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>{subtitle}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+    </AnimatedPressable>
   );
 }
