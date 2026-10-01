@@ -22,6 +22,9 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -33,7 +36,9 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Aleph necesita acceso a la cámara para escanear códigos de barras de libros."
+          "cameraPermission": "Aleph necesita acceso a la cámara para escanear códigos de barras de libros.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
