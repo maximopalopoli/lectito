@@ -45,6 +45,7 @@ export default function ShareBookScreen() {
 
       {/* Share button */}
       <AnimatedPressable
+        accessibilityRole="button"
         onPress={() => captureAndShare(viewShotRef)}
         haptic="medium"
         style={{

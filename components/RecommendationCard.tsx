@@ -82,6 +82,7 @@ export default function RecommendationCard({ recommendation }: RecommendationCar
       </View>
 
       <AnimatedPressable
+        accessibilityRole="button"
         onPress={alreadyInLibrary ? undefined : handleAdd}
         haptic={alreadyInLibrary ? 'none' : 'medium'}
         disabled={alreadyInLibrary}

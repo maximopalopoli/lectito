@@ -84,6 +84,7 @@ export default function ReviewModal({
             <TextInput
               value={review}
               onChangeText={setReview}
+              accessibilityLabel="Reseña"
               placeholder="Escribe tu reseña..."
               placeholderTextColor={colors.textTertiary}
               multiline
@@ -102,6 +103,7 @@ export default function ReviewModal({
             />
 
             <Pressable
+              accessibilityRole="button"
               onPress={handleSave}
               style={{
                 backgroundColor: colors.primary,
@@ -117,6 +119,7 @@ export default function ReviewModal({
             </Pressable>
 
             <Pressable
+              accessibilityRole="button"
               onPress={handleSkip}
               style={{
                 paddingVertical: 12,

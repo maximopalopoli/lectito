@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -118,7 +118,7 @@ export default function LibraryScreen() {
             marginBottom: 12,
           }}
         >
-          <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>Biblioteca</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={{ flexShrink: 1, fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>Biblioteca</Text>
           <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
             {activeTab === "TBR" && !hasAnyFilter && (
               <AnimatedPressable
@@ -300,16 +300,12 @@ export default function LibraryScreen() {
       ) : (
         <>
           {/* Tabs */}
-          <View
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
             accessibilityRole="tablist"
-            style={{
-              flexDirection: "row",
-              marginHorizontal: 20,
-              marginBottom: 12,
-              padding: 3,
-              borderRadius: 10,
-              backgroundColor: colors.surface,
-            }}
+            style={{ flexGrow: 0, marginHorizontal: 20, marginBottom: 12, borderRadius: 10, backgroundColor: colors.surface }}
+            contentContainerStyle={{ flexGrow: 1, padding: 3 }}
           >
             {TABS.map((tab) => {
               const isActive = tab.status === activeTab;
@@ -325,9 +321,9 @@ export default function LibraryScreen() {
                     setActiveTab(tab.status);
                   }}
                   style={{
-                    flex: 1,
+                    flexGrow: 1,
                     minHeight: 44,
-                    paddingHorizontal: 2,
+                    paddingHorizontal: 4,
                     borderRadius: 8,
                     justifyContent: "center",
                     alignItems: "center",
@@ -357,7 +353,7 @@ export default function LibraryScreen() {
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
 
           {/* Book list (tab view) */}
           <FlatList
@@ -380,6 +376,7 @@ export default function LibraryScreen() {
                 </Text>
                 {activeTab === "TBR" && (
                   <AnimatedPressable
+                    accessibilityRole="button"
                     onPress={() => router.push("/book/add")}
                     haptic="medium"
                     style={{

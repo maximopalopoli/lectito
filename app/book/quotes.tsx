@@ -143,7 +143,7 @@ export default function QuotesListScreen() {
                   <Pressable
                     onPress={() => toggleExpanded(quote.id)}
                     accessibilityRole="button"
-                    style={{ alignSelf: 'flex-start', minHeight: 36, justifyContent: 'center' }}
+                    style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }}
                   >
                     <Text style={{ color: colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.semibold }}>
                       {isExpanded ? 'Ver menos' : 'Ver más'}

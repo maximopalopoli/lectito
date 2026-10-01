@@ -122,6 +122,7 @@ export default function BackupScreen() {
             Genera un archivo JSON con tus libros, ePub, sesiones, citas y ajustes.
           </Text>
           <AnimatedPressable
+            accessibilityRole="button"
             onPress={() => handleExport(Platform.OS === "android" ? "save" : "share")}
             haptic="none"
             disabled={exporting}
@@ -140,6 +141,7 @@ export default function BackupScreen() {
           </AnimatedPressable>
           {Platform.OS === "android" && (
             <AnimatedPressable
+              accessibilityRole="button"
               onPress={() => handleExport("share")}
               haptic="none"
               disabled={exporting}
@@ -182,6 +184,7 @@ export default function BackupScreen() {
             todos los datos actuales.
           </Text>
           <AnimatedPressable
+            accessibilityRole="button"
             onPress={handleImport}
             haptic="none"
             disabled={importing}

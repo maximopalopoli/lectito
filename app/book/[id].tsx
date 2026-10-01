@@ -72,7 +72,7 @@ export default function BookDetailScreen() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
         <Text style={{ color: colors.textMuted, fontSize: 16 }}>Libro no encontrado</Text>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))} style={{ marginTop: 16 }}>
+        <Pressable accessibilityRole="button" onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))} style={{ marginTop: 16 }}>
           <Text style={{ color: colors.primary, fontSize: 16 }}>Volver</Text>
         </Pressable>
       </View>
@@ -152,8 +152,10 @@ export default function BookDetailScreen() {
         <View
           style={{
             flexDirection: "row",
+            flexWrap: "wrap",
             justifyContent: "center",
-            gap: 16,
+            columnGap: 16,
+            rowGap: 8,
             marginTop: 12,
           }}
         >
@@ -213,6 +215,7 @@ export default function BookDetailScreen() {
             <TextInput
               value={pageInput}
               onChangeText={setPageInput}
+              accessibilityLabel={`Página actual, entre ${book.currentPage} y ${book.pageCount}`}
               placeholder={`Página actual (${book.currentPage}-${book.pageCount})`}
               placeholderTextColor={colors.textTertiary}
               keyboardType="number-pad"
@@ -227,6 +230,7 @@ export default function BookDetailScreen() {
               }}
             />
             <Pressable
+              accessibilityRole="button"
               onPress={handleSavePage}
               style={{
                 backgroundColor: colors.primary,
@@ -332,6 +336,7 @@ export default function BookDetailScreen() {
               </Text>
             )}
             <Pressable
+              accessibilityRole="button"
               onPress={() => {
                 setReviewMode("edit");
                 setShowReviewModal(true);
@@ -356,7 +361,7 @@ export default function BookDetailScreen() {
             }}
           >
             <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary }}>Etiquetas</Text>
-            <Pressable onPress={() => setShowTagsModal(true)}>
+            <Pressable accessibilityRole="button" onPress={() => setShowTagsModal(true)}>
               <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "600" }}>
                 {(book.tags ?? []).length > 0 ? "Editar" : "+ Agregar"}
               </Text>
@@ -434,6 +439,7 @@ export default function BookDetailScreen() {
               Citas{quotes.length > 0 ? ` (${quotes.length})` : ""}
             </Text>
             <AnimatedPressable
+              accessibilityRole="button"
               onPress={() =>
                 router.push({ pathname: "/book/quote-form", params: { bookId: book.id } })
               }
@@ -463,6 +469,7 @@ export default function BookDetailScreen() {
             <>
               {quotes.slice(0, 3).map((quote) => (
                 <Pressable
+                  accessibilityRole="button"
                   key={quote.id}
                   onPress={() =>
                     router.push({
@@ -494,6 +501,7 @@ export default function BookDetailScreen() {
               ))}
               {quotes.length > 3 && (
                 <AnimatedPressable
+                  accessibilityRole="button"
                   onPress={() =>
                     router.push({ pathname: "/book/quotes", params: { bookId: book.id } })
                   }
@@ -606,7 +614,7 @@ function ActionButton({
       }}
     >
       <Ionicons name={icon} size={isPrimary ? 20 : 18} color={fg} />
-      <Text style={{ color: fg, fontWeight: "600", fontSize: isPrimary ? 16 : 15 }}>{label}</Text>
+      <Text style={{ flexShrink: 1, textAlign: "center", color: fg, fontWeight: "600", fontSize: isPrimary ? 16 : 15 }}>{label}</Text>
     </AnimatedPressable>
   );
 }

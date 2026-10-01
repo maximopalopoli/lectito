@@ -53,6 +53,7 @@ export default function ShareStatsScreen() {
 
       {/* Share button */}
       <AnimatedPressable
+        accessibilityRole="button"
         onPress={() => captureAndShare(viewShotRef)}
         haptic="medium"
         style={{

@@ -323,7 +323,7 @@ export default function AddBookScreen() {
             <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: "center", marginTop: spacing.md }}>
               {error}
             </Text>
-            <Pressable onPress={() => handleSearch()} style={{ marginTop: spacing.md, minHeight: 44, justifyContent: "center" }}>
+            <Pressable accessibilityRole="button" onPress={() => handleSearch()} style={{ marginTop: spacing.md, minHeight: 44, justifyContent: "center" }}>
               <Text style={{ color: colors.primary, fontSize: 15, fontWeight: "600" }}>Reintentar</Text>
             </Pressable>
           </View>
@@ -383,6 +383,7 @@ export default function AddBookScreen() {
           <View style={{ marginTop: spacing.lg }}>
             {results.length > 1 && (
               <Pressable
+                accessibilityRole="button"
                 onPress={() => setSelected(null)}
                 style={{ flexDirection: "row", alignItems: "center", minHeight: 44, marginBottom: spacing.xs }}
               >

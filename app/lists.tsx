@@ -111,7 +111,7 @@ export default function ListsScreen() {
               <BookCard book={book} onPress={() => router.push(`/book/${book.id}`)} />
               <Pressable onPress={() => toggleBook(selectedList.id, book.id)}
                 accessibilityRole="button" accessibilityLabel={`Quitar ${book.title} de ${selectedList.name}`}
-                style={{ alignSelf: "flex-end", paddingHorizontal: 10, minHeight: 40, justifyContent: "center" }}>
+                style={{ alignSelf: "flex-end", paddingHorizontal: 10, minHeight: 44, justifyContent: "center" }}>
                 <Text style={{ color: colors.danger, fontSize: 13, fontWeight: "600" }}>Quitar de la lista</Text>
               </Pressable>
             </View>

@@ -24,7 +24,13 @@ export default function TagBadge({ label, onRemove }: TagBadgeProps) {
     >
       <Text style={{ fontSize: 13, color: colors.tagText }}>{label}</Text>
       {onRemove && (
-        <Pressable onPress={onRemove} hitSlop={6} style={{ marginLeft: 4 }}>
+        <Pressable
+          onPress={onRemove}
+          accessibilityRole="button"
+          accessibilityLabel={`Quitar etiqueta ${label}`}
+          hitSlop={{ top: 14, bottom: 14, left: 8, right: 12 }}
+          style={{ marginLeft: 4 }}
+        >
           <Text style={{ fontSize: 13, color: colors.tagText, fontWeight: '600' }}>
             x
           </Text>

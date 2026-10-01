@@ -154,7 +154,7 @@ export default function SessionScreen() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
         <Text style={{ color: colors.textMuted, fontSize: 16 }}>Libro no encontrado</Text>
-        <Pressable onPress={leave} style={{ marginTop: 16, minHeight: 44, justifyContent: "center" }}>
+        <Pressable accessibilityRole="button" onPress={leave} style={{ marginTop: 16, minHeight: 44, justifyContent: "center" }}>
           <Text style={{ color: colors.primary, fontSize: 16 }}>Volver</Text>
         </Pressable>
       </View>
@@ -424,6 +424,7 @@ export default function SessionScreen() {
           <TextInput
             value={noteInput}
             onChangeText={setNoteInput}
+            accessibilityLabel="Nota de la sesión, opcional"
             placeholder="¿Qué te pareció lo que leíste?"
             placeholderTextColor={colors.textTertiary}
             multiline

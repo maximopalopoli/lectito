@@ -465,7 +465,7 @@ function CurrentBookCard({
               <ProgressBar percent={progress.percent} height={6} />
               <Text
                 style={{ fontSize: fontSize.sm, color: colors.textTertiary, marginTop: spacing.xs }}
-                numberOfLines={1}
+                numberOfLines={2}
               >
                 {progress.byPercent
                   ? `${progress.percent}% leído${progress.chapter ? ` · ${progress.chapter}` : ""}`
@@ -521,6 +521,7 @@ function ReadingRow({
     // Sin accessibilityRole="button": contiene el botón de play, y en web
     // eso generaría un <button> anidado dentro de otro.
     <AnimatedPressable
+      accessibilityRole="button"
       onPress={onOpen}
       haptic="light"
       accessibilityLabel={`Ver ${book.title}`}

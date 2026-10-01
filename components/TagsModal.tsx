@@ -134,6 +134,7 @@ export default function TagsModal({
               <TextInput
                 value={input}
                 onChangeText={setInput}
+                accessibilityLabel="Nueva etiqueta"
                 placeholder="Nueva etiqueta..."
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="none"
@@ -151,7 +152,10 @@ export default function TagsModal({
               />
               <Pressable
                 onPress={() => input.trim() && addTag(input)}
+                accessibilityRole="button"
+                accessibilityLabel="Agregar etiqueta"
                 style={{
+                  minWidth: 44,
                   backgroundColor: colors.primary,
                   paddingHorizontal: 16,
                   borderRadius: 10,
@@ -185,7 +189,12 @@ export default function TagsModal({
                   }}
                 >
                   {filteredSuggestions.map((tag) => (
-                    <Pressable key={tag} onPress={() => addTag(tag)}>
+                    <Pressable
+                      key={tag}
+                      onPress={() => addTag(tag)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Agregar etiqueta ${tag}`}
+                    >
                       <TagBadge label={tag} />
                     </Pressable>
                   ))}
@@ -195,6 +204,7 @@ export default function TagsModal({
 
             {/* Save */}
             <Pressable
+              accessibilityRole="button"
               onPress={handleSave}
               style={{
                 backgroundColor: colors.primary,
@@ -212,6 +222,7 @@ export default function TagsModal({
             </Pressable>
 
             <Pressable
+              accessibilityRole="button"
               onPress={onClose}
               style={{
                 paddingVertical: 12,

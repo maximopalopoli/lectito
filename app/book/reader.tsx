@@ -450,7 +450,7 @@ export default function ReaderScreen() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text style={{ color: "#888", fontSize: 16 }}>Este libro no tiene ePub asociado</Text>
-        <Pressable onPress={handleBack} style={{ marginTop: 16, minHeight: 44, justifyContent: "center" }}>
+        <Pressable accessibilityRole="button" onPress={handleBack} style={{ marginTop: 16, minHeight: 44, justifyContent: "center" }}>
           <Text style={{ color: "#007AFF", fontSize: 16 }}>Volver</Text>
         </Pressable>
       </View>
@@ -718,6 +718,8 @@ export default function ReaderScreen() {
         <Pressable
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}
           onPress={() => setShowSettings(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar ajustes de lectura"
         />
         <View
           style={{
@@ -741,7 +743,9 @@ export default function ReaderScreen() {
                 useReaderSettingsStore.getState().updateSettings({ fontSize: size });
                 sendToWebView({ type: "setFontSize", size });
               }}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" }}
+              accessibilityRole="button"
+              accessibilityLabel="Achicar texto"
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" }}
             >
               <Text style={{ fontSize: 18, fontWeight: "bold" }}>A-</Text>
             </Pressable>
@@ -752,7 +756,9 @@ export default function ReaderScreen() {
                 useReaderSettingsStore.getState().updateSettings({ fontSize: size });
                 sendToWebView({ type: "setFontSize", size });
               }}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" }}
+              accessibilityRole="button"
+              accessibilityLabel="Agrandar texto"
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" }}
             >
               <Text style={{ fontSize: 18, fontWeight: "bold" }}>A+</Text>
             </Pressable>
@@ -768,8 +774,13 @@ export default function ReaderScreen() {
                   useReaderSettingsStore.getState().updateSettings({ theme: opt.theme });
                   sendToWebView({ type: "setTheme", theme: opt.theme });
                 }}
+                accessibilityRole="radio"
+                accessibilityLabel={`Tema ${opt.label}`}
+                accessibilityState={{ selected: readerSettings.theme === opt.theme }}
                 style={{
                   flex: 1,
+                  minHeight: 44,
+                  justifyContent: "center",
                   paddingVertical: 10,
                   borderRadius: 8,
                   backgroundColor: opt.bg,
@@ -793,8 +804,12 @@ export default function ReaderScreen() {
                   useReaderSettingsStore.getState().updateSettings({ fontFamily: opt.value });
                   sendToWebView({ type: "setFontFamily", family: opt.value });
                 }}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: readerSettings.fontFamily === opt.value }}
                 style={{
                   flex: 1,
+                  minHeight: 44,
+                  justifyContent: "center",
                   paddingVertical: 8,
                   borderRadius: 8,
                   borderWidth: 1,
@@ -823,6 +838,8 @@ export default function ReaderScreen() {
         <Pressable
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}
           onPress={() => setShowToc(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar índice"
         />
         <View
           style={{
@@ -900,9 +917,13 @@ export default function ReaderScreen() {
           <Pressable
             style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
             onPress={handleCancelHighlight}
+            // Not focusable as a whole: the screen reader must reach the
+            // note field and buttons inside the sheet one by one.
+            accessible={false}
           >
             <Pressable
               onPress={() => {}}
+              accessible={false}
               style={{
                 backgroundColor: themeBg,
                 borderTopLeftRadius: 20,
@@ -971,6 +992,7 @@ export default function ReaderScreen() {
               <TextInput
                 value={highlightNote}
                 onChangeText={setHighlightNote}
+                accessibilityLabel="Nota de la cita, opcional"
                 placeholder="Nota (opcional)"
                 placeholderTextColor="#888"
                 multiline
@@ -989,6 +1011,7 @@ export default function ReaderScreen() {
 
               {/* Save button */}
               <Pressable
+                accessibilityRole="button"
                 onPress={handleSaveHighlight}
                 style={{
                   backgroundColor: ui.primary,

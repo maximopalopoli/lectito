@@ -434,6 +434,7 @@ export default function RecommendationsScreen() {
           ListFooterComponent={
             visibleCount < recommendations.length ? (
               <AnimatedPressable
+                accessibilityRole="button"
                 onPress={() => setVisibleCount((n) => n + PAGE_SIZE)}
                 haptic="light"
                 style={{
@@ -475,6 +476,7 @@ export default function RecommendationsScreen() {
             {errorMessage}
           </Text>
           <AnimatedPressable
+            accessibilityRole="button"
             onPress={() => setScreenState('selection')}
             haptic="medium"
             style={{

@@ -69,7 +69,7 @@ export default function StatsScreen() {
       >
         {/* Sin compartir (no hay nada que mostrar), pero el backup sigue a mano para restaurar. */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={{ flexShrink: 1, fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>
             Estadísticas
           </Text>
           <CircleIconButton
@@ -116,8 +116,8 @@ export default function StatsScreen() {
         paddingBottom: 40,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-        <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={{ flexShrink: 1, fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>
           Estadísticas
         </Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -464,6 +464,7 @@ function GoalSection({
           </View>
 
           <AnimatedPressable
+            accessibilityRole="button"
             onPress={() => router.push("/goals/configure")}
             haptic="light"
             scaleDown={0.97}
@@ -476,6 +477,7 @@ function GoalSection({
         </View>
       ) : (
         <AnimatedPressable
+          accessibilityRole="button"
           onPress={() => router.push("/goals/configure")}
           haptic="light"
           style={{
