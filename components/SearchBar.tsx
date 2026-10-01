@@ -24,7 +24,8 @@ export default function SearchBar({
         borderColor: colors.border,
         borderRadius: 10,
         paddingHorizontal: 10,
-        paddingVertical: 8,
+        paddingVertical: 0,
+        minHeight: 44,
         backgroundColor: colors.surfaceAlt,
       }}
     >
@@ -35,6 +36,7 @@ export default function SearchBar({
         style={{ marginRight: 8 }}
       />
       <TextInput
+        accessibilityLabel="Buscar libros por título o autor"
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -43,7 +45,12 @@ export default function SearchBar({
         style={{ flex: 1, fontSize: 15, color: colors.textPrimary, padding: 0 }}
       />
       {value.length > 0 && (
-        <Pressable onPress={() => onChangeText("")} hitSlop={8}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Borrar búsqueda"
+          onPress={() => onChangeText("")}
+          style={{ width: 44, height: 44, justifyContent: "center", alignItems: "center" }}
+        >
           <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
         </Pressable>
       )}

@@ -1,14 +1,16 @@
-import { Image, Pressable, Text, View } from "react-native";
-import * as Haptics from "expo-haptics";
+import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import type { Book } from "@/types";
 import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
 import AnimatedPressable from "./AnimatedPressable";
+import BookCover from "./BookCover";
 
 interface BookCardProps {
   book: Book;
   onPress?: () => void;
-  onDelete?: () => void;
+  /** Mostrar el estante; innecesario cuando la lista ya es de un solo estante. */
+  showStatus?: boolean;
 }
 
 const STATUS_LABEL: Record<Book["status"], string> = {
@@ -18,45 +20,30 @@ const STATUS_LABEL: Record<Book["status"], string> = {
   DNF: "Abandonado",
 };
 
-export default function BookCard({ book, onPress, onDelete }: BookCardProps) {
+export default function BookCard({ book, onPress, showStatus = true }: BookCardProps) {
   const colors = useTheme();
   return (
-    <AnimatedPressable
-      onPress={onPress}
-      haptic="light"
+    <View
       style={{
         flexDirection: "row",
         backgroundColor: colors.surface,
         borderRadius: radius.lg,
         marginBottom: spacing.sm,
-        padding: 10,
         alignItems: "center",
       }}
     >
-      {/* Cover */}
-      {book.coverUrl ? (
-        <Image
-          source={{ uri: book.coverUrl }}
-          style={{ width: 48, height: 70, borderRadius: radius.sm }}
-          resizeMode="cover"
-        />
-      ) : (
-        <View
-          style={{
-            width: 48,
-            height: 70,
-            borderRadius: radius.sm,
-            backgroundColor: colors.border,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: fontSize.xxl }}>📖</Text>
-        </View>
-      )}
+      <AnimatedPressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${book.title}, ${book.authors.join(", ")}, ${STATUS_LABEL[book.status]}`}
+        haptic="light"
+        style={{ flex: 1, flexDirection: "row", alignItems: "center", padding: 10 }}
+      >
+        {/* Cover */}
+        <BookCover uri={book.coverUrl} width={48} height={70} radius={radius.sm} />
 
-      {/* Info */}
-      <View style={{ flex: 1, marginLeft: spacing.md }}>
+        {/* Info */}
+        <View style={{ flex: 1, marginLeft: spacing.md }}>
         <Text style={{ fontWeight: fontWeight.semibold, fontSize: fontSize.base, color: colors.textPrimary }} numberOfLines={1}>
           {book.title}
         </Text>
@@ -64,10 +51,16 @@ export default function BookCard({ book, onPress, onDelete }: BookCardProps) {
           {book.authors.join(", ")}
         </Text>
         <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>
-          {STATUS_LABEL[book.status]}
-          {book.status === "READING" && book.pageCount > 0
-            ? ` · ${book.currentPage}/${book.pageCount} (${Math.round((book.currentPage / book.pageCount) * 100)}%)`
-            : ` · ${book.pageCount} pp`}
+          {[
+            showStatus ? STATUS_LABEL[book.status] : null,
+            book.status === "READING" && book.pageCount > 0
+              ? `${book.currentPage}/${book.pageCount} pp · ${Math.round((book.currentPage / book.pageCount) * 100)}%`
+              : book.pageCount > 0
+                ? `${book.pageCount} pp`
+                : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </Text>
         {(book.tags ?? []).length > 0 && (
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: spacing.xs, gap: spacing.xs }}>
@@ -93,23 +86,10 @@ export default function BookCard({ book, onPress, onDelete }: BookCardProps) {
             )}
           </View>
         )}
-      </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.icon} style={{ marginLeft: spacing.sm }} />
+      </AnimatedPressable>
 
-      {/* Delete */}
-      {onDelete && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Eliminar ${book.title}`}
-          hitSlop={8}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onDelete();
-          }}
-          style={{ padding: spacing.sm }}
-        >
-          <Text style={{ color: colors.dangerStrong, fontSize: fontSize.lg }}>✕</Text>
-        </Pressable>
-      )}
-    </AnimatedPressable>
+    </View>
   );
 }

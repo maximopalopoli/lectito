@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Alert, FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,7 +44,9 @@ function matchesSearch(book: Book, query: string): boolean {
 }
 
 export default function LibraryScreen() {
-  const [activeTab, setActiveTab] = useState<BookStatus>("TBR");
+  const [activeTab, setActiveTab] = useState<BookStatus>(() =>
+    useBooksStore.getState().books.some((b) => b.status === "READING") ? "READING" : "TBR",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [minRating, setMinRating] = useState<number | null>(null);
@@ -53,7 +55,6 @@ export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const colors = useTheme();
   const books = useBooksStore((s) => s.books);
-  const deleteBook = useBooksStore((s) => s.deleteBook);
 
   const activeFilterCount =
     selectedTags.length + (minRating != null ? 1 : 0);
@@ -93,23 +94,11 @@ export default function LibraryScreen() {
     setMinRating(null);
   }, []);
 
-  const confirmDelete = useCallback(
-    (book: Book) => {
-      Alert.alert(
-        "Eliminar libro",
-        `¿Eliminar "${book.title}"? También se borran sus sesiones y citas. Esta acción no se puede deshacer.`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Eliminar",
-            style: "destructive",
-            onPress: () => deleteBook(book.id),
-          },
-        ],
-      );
-    },
-    [deleteBook],
-  );
+  const shelfCounts = useMemo(() => {
+    const counts: Record<BookStatus, number> = { TBR: 0, READING: 0, DONE: 0, DNF: 0 };
+    for (const b of books) counts[b.status] += 1;
+    return counts;
+  }, [books]);
 
   // Books for the active tab (no search/filter applied)
   const tabBooks = useMemo(
@@ -134,13 +123,15 @@ export default function LibraryScreen() {
             {activeTab === "TBR" && !hasAnyFilter && (
               <AnimatedPressable
                 onPress={() => router.push("/recommendations")}
+                accessibilityRole="button"
+                accessibilityLabel="Explorar recomendaciones"
                 haptic="light"
                 scaleDown={0.9}
                 style={{
                   backgroundColor: colors.surfaceTint,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   justifyContent: "center",
                   alignItems: "center",
                 }}
@@ -150,13 +141,15 @@ export default function LibraryScreen() {
             )}
             <AnimatedPressable
               onPress={() => router.push("/book/add")}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar libro"
               haptic="medium"
               scaleDown={0.9}
               style={{
                 backgroundColor: colors.primary,
-                width: 36,
-                height: 36,
-                borderRadius: 18,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
                 justifyContent: "center",
                 alignItems: "center",
               }}
@@ -176,13 +169,16 @@ export default function LibraryScreen() {
             />
           </View>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Filtros de biblioteca"
+            accessibilityState={{ expanded: showFilters }}
             onPress={() => {
               Haptics.selectionAsync();
               setShowFilters((prev) => !prev);
             }}
             style={{
-              width: 38,
-              height: 38,
+              width: 44,
+              height: 44,
               borderRadius: 10,
               borderWidth: 1,
               borderColor: showFilters ? colors.primary : colors.border,
@@ -261,11 +257,14 @@ export default function LibraryScreen() {
               {filteredBooks.length} resultado{filteredBooks.length !== 1 ? "s" : ""}
             </Text>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Limpiar búsqueda y filtros"
               onPress={() => {
                 setSearchQuery("");
                 handleClearFilters();
                 setShowFilters(false);
               }}
+              style={{ minHeight: 44, justifyContent: "center" }}
             >
               <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "600" }}>
                 Limpiar
@@ -294,7 +293,6 @@ export default function LibraryScreen() {
               <BookCard
                 book={item}
                 onPress={() => router.push(`/book/${item.id}`)}
-                onDelete={() => confirmDelete(item)}
               />
             )}
           />
@@ -303,37 +301,58 @@ export default function LibraryScreen() {
         <>
           {/* Tabs */}
           <View
+            accessibilityRole="tablist"
             style={{
               flexDirection: "row",
-              paddingHorizontal: 12,
+              marginHorizontal: 20,
               marginBottom: 12,
+              padding: 3,
+              borderRadius: 10,
+              backgroundColor: colors.surface,
             }}
           >
             {TABS.map((tab) => {
               const isActive = tab.status === activeTab;
+              const count = shelfCounts[tab.status];
               return (
                 <Pressable
                   key={tab.status}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${tab.label}, ${count} libro${count !== 1 ? "s" : ""}`}
                   onPress={() => {
                     Haptics.selectionAsync();
                     setActiveTab(tab.status);
                   }}
                   style={{
                     flex: 1,
-                    paddingVertical: 8,
-                    borderBottomWidth: 2,
-                    borderBottomColor: isActive ? colors.primary : colors.borderLight,
+                    minHeight: 44,
+                    paddingHorizontal: 2,
+                    borderRadius: 8,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: isActive ? colors.surfaceAlt : "transparent",
                   }}
                 >
                   <Text
+                    numberOfLines={1}
                     style={{
-                      textAlign: "center",
                       fontSize: 13,
-                      fontWeight: isActive ? "700" : "400",
-                      color: isActive ? colors.primary : colors.textMuted,
+                      fontWeight: isActive ? "700" : "500",
+                      color: isActive ? colors.textPrimary : colors.textMuted,
                     }}
                   >
                     {tab.label}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      marginTop: 1,
+                      fontWeight: "600",
+                      color: isActive ? colors.primary : colors.textTertiary,
+                    }}
+                  >
+                    {count}
                   </Text>
                 </Pressable>
               );
@@ -382,7 +401,7 @@ export default function LibraryScreen() {
               <BookCard
                 book={item}
                 onPress={() => router.push(`/book/${item.id}`)}
-                onDelete={() => confirmDelete(item)}
+                showStatus={false}
               />
             )}
           />

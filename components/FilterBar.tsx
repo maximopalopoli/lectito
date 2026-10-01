@@ -35,11 +35,14 @@ export default function FilterBar({
           {[1, 2, 3, 4, 5].map((star) => (
             <Pressable
               key={star}
+              accessibilityRole="button"
+              accessibilityLabel={`Filtrar desde ${star} estrellas`}
+              accessibilityState={{ selected: minRating === star }}
               onPress={() => {
                 Haptics.selectionAsync();
                 onChangeRating(minRating === star ? null : star);
               }}
-              hitSlop={4}
+              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
             >
               <Ionicons
                 name={minRating != null && star <= minRating ? "star" : "star-outline"}
@@ -72,6 +75,9 @@ export default function FilterBar({
               return (
                 <Pressable
                   key={tag}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Filtrar por etiqueta ${tag}`}
+                  accessibilityState={{ selected: isSelected }}
                   onPress={() => {
                     Haptics.selectionAsync();
                     onToggleTag(tag);
@@ -80,7 +86,7 @@ export default function FilterBar({
                     backgroundColor: isSelected ? colors.tagText : colors.tagBg,
                     borderRadius: 12,
                     paddingHorizontal: 12,
-                    paddingVertical: 6,
+                    paddingVertical: 12,
                   }}
                 >
                   <Text
@@ -102,11 +108,13 @@ export default function FilterBar({
       {/* Clear button */}
       {hasActiveFilters && (
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Limpiar filtros"
           onPress={() => {
             Haptics.selectionAsync();
             onClear();
           }}
-          style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-start" }}
+          style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-start", minHeight: 44 }}
         >
           <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
           <Text style={{ fontSize: 13, color: colors.danger, marginLeft: 4 }}>

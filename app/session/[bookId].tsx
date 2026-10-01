@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,6 +14,7 @@ import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BookCover from "@/components/BookCover";
 import { spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
@@ -184,26 +184,7 @@ export default function SessionScreen() {
           gap: 12,
         }}
       >
-        {book.coverUrl ? (
-          <Image
-            source={{ uri: book.coverUrl }}
-            style={{ width: 48, height: 70, borderRadius: 4 }}
-            resizeMode="cover"
-          />
-        ) : (
-          <View
-            style={{
-              width: 48,
-              height: 70,
-              borderRadius: 4,
-              backgroundColor: colors.borderLight,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 24 }}>📖</Text>
-          </View>
-        )}
+        <BookCover uri={book.coverUrl} width={48} height={70} radius={4} />
         <View style={{ flex: 1 }}>
           <Text
             style={{ fontSize: 17, fontWeight: "600", color: colors.textPrimary }}

@@ -11,7 +11,7 @@ Aleph is a personal reading app: a private library for tracking reading sessions
 - Ratings, reviews, tags, quotes, and highlights; shareable cards without a social network.
 - An ePub reader with themes, typography, saved position, and highlights. JSON backups include books, custom lists, sessions, quotes, goals, reader settings, and ePub files.
 
-Data is stored on the device. There are no accounts or cross-device sync yet; manual backups can be used to move data. See [ROADMAP.md](ROADMAP.md) for feature status and priorities.
+Data is stored on the device. There are no accounts or cross-device sync yet; manual backups can be used to move data. See [ROADMAP.md](ROADMAP.md) for feature status and priorities, and [QUALITY.md](QUALITY.md) for the product quality review.
 
 ## Tech stack and structure
 

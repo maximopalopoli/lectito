@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BookCover from "@/components/BookCover";
 import { getGoalProgress, getStreak, getTodayStats } from "@/lib/stats";
 import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
@@ -143,26 +144,7 @@ export default function HomeScreen() {
                     alignItems: "center",
                   }}
                 >
-                  {book.coverUrl ? (
-                    <Image
-                      source={{ uri: book.coverUrl }}
-                      style={{ width: 50, height: 74, borderRadius: 6 }}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 50,
-                        height: 74,
-                        borderRadius: 6,
-                        backgroundColor: colors.border,
-                        justifyContent: "center",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Ionicons name="book" size={24} color={colors.textTertiary} />
-                    </View>
-                  )}
+                  <BookCover uri={book.coverUrl} width={50} height={74} />
                   <View
                     style={{
                       flex: 1,
@@ -215,6 +197,8 @@ export default function HomeScreen() {
                   </View>
                   <AnimatedPressable
                     onPress={() => router.push(`/session/${book.id}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Iniciar sesión de lectura de ${book.title}`}
                     haptic="medium"
                     scaleDown={0.9}
                     style={{

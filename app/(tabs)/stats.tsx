@@ -77,8 +77,19 @@ export default function StatsScreen() {
           Sin datos todavía
         </Text>
         <Text style={{ fontSize: 14, color: colors.textTertiary, textAlign: "center" }}>
-          Completá tu primera sesión de lectura para ver tus estadísticas acá.
+          {books.length > 0
+            ? "Completá tu primera sesión de lectura para ver tus estadísticas acá."
+            : "Agregá un libro y completá tu primera sesión para ver tus estadísticas acá."}
         </Text>
+        <AnimatedPressable
+          onPress={() => router.push(books.length > 0 ? "/library" : "/book/add")}
+          accessibilityRole="button"
+          style={{ backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 14, marginTop: 20 }}
+        >
+          <Text style={{ color: colors.onPrimary, fontSize: 15, fontWeight: "600" }}>
+            {books.length > 0 ? "Ir a mi biblioteca" : "Agregar libro"}
+          </Text>
+        </AnimatedPressable>
       </View>
     );
   }

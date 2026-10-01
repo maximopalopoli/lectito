@@ -19,12 +19,12 @@ export const lightColors = {
 
   // Texto
   textPrimary: "#000",
-  textSecondary: "#666",
-  textTertiary: "#999",
-  textMuted: "#888",
+  textSecondary: "#555",
+  textTertiary: "#666",
+  textMuted: "#666",
 
   // Marca / semántico
-  primary: "#007AFF",
+  primary: "#0066CC",
   primaryTint: "#EBF2FF",
   success: "#34C759",
   warning: "#FF9500",

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  Image,
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -9,8 +9,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
+import BookCover from "@/components/BookCover";
 import ReviewModal from "@/components/ReviewModal";
 import StarRating from "@/components/StarRating";
 import TagBadge from "@/components/TagBadge";
@@ -44,6 +46,7 @@ export default function BookDetailScreen() {
   const books = useBooksStore((s) => s.books);
   const updateBook = useBooksStore((s) => s.updateBook);
   const changeStatus = useBooksStore((s) => s.changeStatus);
+  const deleteBook = useBooksStore((s) => s.deleteBook);
   const allSessions = useSessionsStore((s) => s.sessions);
   const allQuotes = useQuotesStore((s) => s.quotes);
 
@@ -74,6 +77,33 @@ export default function BookDetailScreen() {
     );
   }
 
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/library"));
+
+  const confirmDelete = () => {
+    Alert.alert(
+      "Eliminar libro",
+      `¿Eliminar "${book.title}"? También se borran sus sesiones y citas. Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => {
+            deleteBook(book.id);
+            goBack();
+          },
+        },
+      ],
+    );
+  };
+
+  const confirmAbandon = () => {
+    Alert.alert("Abandonar libro", `¿Mover "${book.title}" a Abandonados? Podés retomarlo cuando quieras.`, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Abandonar", style: "destructive", onPress: () => changeStatus(book.id, "DNF") },
+    ]);
+  };
+
   const progress = book.pageCount > 0 ? book.currentPage / book.pageCount : 0;
 
   const handleSavePage = () => {
@@ -95,38 +125,23 @@ export default function BookDetailScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingTop: insets.top + 16,
-          paddingHorizontal: 16,
-          paddingBottom: 12,
+          justifyContent: "space-between",
+          paddingTop: insets.top + 8,
+          paddingHorizontal: 8,
+          paddingBottom: 4,
         }}
       >
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/library"))} style={{ padding: 4 }}>
-          <Text style={{ color: colors.primary, fontSize: 16 }}>← Volver</Text>
-        </Pressable>
+        <HeaderIconButton icon="chevron-back" label="Volver" onPress={goBack} />
+        <HeaderIconButton
+          icon="share-outline"
+          label="Compartir card del libro"
+          onPress={() => router.push({ pathname: "/book/share", params: { bookId: book.id } })}
+        />
       </View>
 
       {/* Cover */}
       <View style={{ alignItems: "center", marginBottom: 20 }}>
-        {book.coverUrl ? (
-          <Image
-            source={{ uri: book.coverUrl }}
-            style={{ width: 140, height: 210, borderRadius: 8 }}
-            resizeMode="cover"
-          />
-        ) : (
-          <View
-            style={{
-              width: 140,
-              height: 210,
-              borderRadius: 8,
-              backgroundColor: colors.borderLight,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 48 }}>📖</Text>
-          </View>
-        )}
+        <BookCover uri={book.coverUrl} width={140} height={210} radius={8} />
       </View>
 
       {/* Info */}
@@ -159,7 +174,7 @@ export default function BookDetailScreen() {
         </View>
 
         <Text style={{ color: colors.textTertiary, fontSize: 12, textAlign: "center", marginTop: 8 }}>
-          Agregado el {new Date(book.addedAt).toLocaleDateString()}
+          Agregado el {formatDate(book.addedAt)}
         </Text>
 
         {/* Progress */}
@@ -230,6 +245,65 @@ export default function BookDetailScreen() {
           </View>
         )}
 
+        {/* Actions */}
+        <View style={{ marginTop: 24, gap: 10 }}>
+          {book.status === "TBR" && (
+            <ActionButton
+              icon="book-outline"
+              label="Empezar a leer"
+              onPress={() => changeStatus(book.id, "READING")}
+            />
+          )}
+
+          {book.status === "READING" && (
+            <>
+              <ActionButton
+                icon="play"
+                label="Iniciar sesión de lectura"
+                onPress={() => router.push(`/session/${book.id}`)}
+              />
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <ActionButton
+                  variant="secondary"
+                  icon="create-outline"
+                  label="Progreso"
+                  onPress={() => setShowPageInput(!showPageInput)}
+                />
+                <ActionButton
+                  variant="secondary"
+                  icon="checkmark-circle-outline"
+                  label="Terminado"
+                  onPress={() => {
+                    setReviewMode("complete");
+                    setShowReviewModal(true);
+                  }}
+                />
+              </View>
+            </>
+          )}
+
+          {book.epubUri && (
+            <ActionButton
+              variant="secondary"
+              icon="reader-outline"
+              label="Leer ePub"
+              onPress={() => router.push({ pathname: "/book/reader", params: { bookId: book.id } })}
+            />
+          )}
+
+          {(book.status === "DONE" || book.status === "DNF") && (
+            <ActionButton
+              variant="secondary"
+              icon="refresh"
+              label={book.status === "DONE" ? "Volver a leer" : "Retomar"}
+              onPress={() => {
+                updateBook(book.id, { currentPage: 0 });
+                changeStatus(book.id, "READING");
+              }}
+            />
+          )}
+        </View>
+
         {/* Rating & Review */}
         {book.status === "DONE" && (
           <View style={{ marginTop: 24 }}>
@@ -298,85 +372,6 @@ export default function BookDetailScreen() {
           )}
         </View>
 
-        {/* Actions */}
-        <View style={{ marginTop: 24, gap: 10 }}>
-          <Text style={{ fontWeight: "600", fontSize: 15, color: colors.textPrimary, marginBottom: 4 }}>
-            Acciones
-          </Text>
-
-          {book.epubUri && (
-            <ActionButton
-              label="Leer ePub"
-              color={colors.warning}
-              onPress={() => router.push({ pathname: "/book/reader", params: { bookId: book.id } })}
-            />
-          )}
-
-          {book.status === "TBR" && (
-            <ActionButton
-              label="Empezar a leer"
-              color={colors.success}
-              onPress={() => changeStatus(book.id, "READING")}
-            />
-          )}
-
-          {book.status === "READING" && (
-            <>
-              <ActionButton
-                label="Iniciar sesión de lectura"
-                color={colors.primary}
-                onPress={() => router.push(`/session/${book.id}`)}
-              />
-              <ActionButton
-                label="Actualizar progreso"
-                color={colors.primary}
-                onPress={() => setShowPageInput(!showPageInput)}
-              />
-              <ActionButton
-                label="Marcar como leído"
-                color={colors.success}
-                onPress={() => {
-                  setReviewMode("complete");
-                  setShowReviewModal(true);
-                }}
-              />
-              <ActionButton
-                label="Abandonar"
-                color={colors.danger}
-                onPress={() => changeStatus(book.id, "DNF")}
-              />
-            </>
-          )}
-
-          {book.status === "DONE" && (
-            <ActionButton
-              label="Volver a leer"
-              color={colors.primary}
-              onPress={() => {
-                updateBook(book.id, { currentPage: 0 });
-                changeStatus(book.id, "READING");
-              }}
-            />
-          )}
-
-          {book.status === "DNF" && (
-            <ActionButton
-              label="Reintentar"
-              color={colors.primary}
-              onPress={() => {
-                updateBook(book.id, { currentPage: 0 });
-                changeStatus(book.id, "READING");
-              }}
-            />
-          )}
-
-          <ActionButton
-            label="Compartir card"
-            color={colors.accent}
-            onPress={() => router.push({ pathname: "/book/share", params: { bookId: book.id } })}
-          />
-        </View>
-
         {/* Session history */}
         {sessions.length > 0 && (
           <View style={{ marginTop: 24 }}>
@@ -403,7 +398,7 @@ export default function BookDetailScreen() {
                     }}
                   >
                     <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                      {new Date(session.startedAt).toLocaleDateString()}
+                      {formatDate(session.startedAt)}
                     </Text>
                     <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textPrimary }}>
                       {session.durationMin} min
@@ -513,6 +508,14 @@ export default function BookDetailScreen() {
             </>
           )}
         </View>
+
+        {/* Low-emphasis / destructive actions */}
+        <View style={{ marginTop: 32, alignItems: "center", gap: 4 }}>
+          {book.status === "READING" && (
+            <TextButton label="Abandonar libro" color={colors.textSecondary} onPress={confirmAbandon} />
+          )}
+          <TextButton label="Eliminar de la biblioteca" color={colors.danger} onPress={confirmDelete} />
+        </View>
       </View>
 
       <TagsModal
@@ -567,28 +570,79 @@ function InfoChip({ label, value }: { label: string; value: string }) {
 
 function ActionButton({
   label,
-  color,
+  icon,
   onPress,
+  variant = "primary",
 }: {
   label: string;
-  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  variant?: "primary" | "secondary";
+}) {
+  const colors = useTheme();
+  const isPrimary = variant === "primary";
+  const fg = isPrimary ? colors.onPrimary : colors.primary;
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      haptic="medium"
+      style={{
+        flex: isPrimary ? undefined : 1,
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 8,
+        minHeight: isPrimary ? 52 : 46,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: isPrimary ? colors.primary : colors.surface,
+        borderWidth: isPrimary ? 0 : 1,
+        borderColor: colors.border,
+      }}
+    >
+      <Ionicons name={icon} size={isPrimary ? 20 : 18} color={fg} />
+      <Text style={{ color: fg, fontWeight: "600", fontSize: isPrimary ? 16 : 15 }}>{label}</Text>
+    </AnimatedPressable>
+  );
+}
+
+function TextButton({ label, color, onPress }: { label: string; color: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={{ minHeight: 44, paddingHorizontal: 16, justifyContent: "center" }}
+    >
+      <Text style={{ color, fontSize: 14, fontWeight: "500" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function HeaderIconButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
   onPress: () => void;
 }) {
   const colors = useTheme();
   return (
-    <AnimatedPressable
+    <Pressable
       onPress={onPress}
-      haptic="medium"
-      style={{
-        backgroundColor: color,
-        paddingVertical: 12,
-        borderRadius: 10,
-        alignItems: "center",
-      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      style={{ width: 44, height: 44, justifyContent: "center", alignItems: "center" }}
     >
-      <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>
-        {label}
-      </Text>
-    </AnimatedPressable>
+      <Ionicons name={icon} size={24} color={colors.primary} />
+    </Pressable>
   );
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
 }
