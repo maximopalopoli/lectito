@@ -8,9 +8,14 @@ export interface ReaderPosition {
 }
 
 export type ReaderThemeName = 'light' | 'dark' | 'sepia';
+export type ReaderLineHeight = 'compact' | 'normal' | 'relaxed';
+export type ReaderMargin = 'normal' | 'wide' | 'wider';
 
 export interface ReaderTheme {
   fontSize: number; // percentage, default 100
   fontFamily: 'default' | 'serif' | 'sans-serif' | 'monospace';
   theme: ReaderThemeName;
+  /** Opcionales: los ajustes guardados antes de que existieran no los tienen. */
+  lineHeight?: ReaderLineHeight;
+  margin?: ReaderMargin;
 }

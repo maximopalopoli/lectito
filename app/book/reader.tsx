@@ -1,17 +1,20 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { usePreventRemove, type NavigationAction } from "expo-router/react-navigation";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
@@ -29,7 +32,7 @@ import { pickDocument } from "@/lib/pickDocument";
 import { getBundledReaderHtml } from "@/lib/readerAssets";
 import { addPageSample, charsPerPage, estimatePages, type PageSamples } from "@/lib/readerPages";
 import { darkColors, lightColors } from "@/lib/theme";
-import type { QuoteColor, ReaderThemeName } from "@/types";
+import type { QuoteColor, ReaderLineHeight, ReaderMargin, ReaderTheme, ReaderThemeName } from "@/types";
 
 const COLOR_OPTIONS: { color: QuoteColor; hex: string }[] = [
   { color: "yellow", hex: "#FBBF24" },
@@ -47,18 +50,60 @@ const COLOR_LABELS: Record<QuoteColor, string> = {
   purple: "Violeta",
 };
 
-const THEME_OPTIONS: { label: string; theme: ReaderThemeName; bg: string; fg: string }[] = [
-  { label: "Claro", theme: "light", bg: "#ffffff", fg: "#1a1a1a" },
-  { label: "Oscuro", theme: "dark", bg: "#1a1a1a", fg: "#e0e0e0" },
-  { label: "Sepia", theme: "sepia", bg: "#f4ecd8", fg: "#5b4636" },
+/** Colores del lector: siguen el tema elegido para leer, no el del sistema. */
+interface ReaderPalette {
+  bg: string;
+  fg: string;
+  /** Texto secundario; contraste de al menos 4.5:1 sobre `bg`. */
+  muted: string;
+  border: string;
+  panel: string;
+  accent: string;
+  onAccent: string;
+}
+
+const PALETTES: Record<ReaderThemeName, ReaderPalette> = {
+  light: { bg: "#ffffff", fg: "#1a1a1a", muted: "#6b6b6b", border: "rgba(0,0,0,0.1)", panel: "#f2f2f2", accent: lightColors.primary, onAccent: lightColors.onPrimary },
+  dark: { bg: "#1a1a1a", fg: "#e0e0e0", muted: "#9a9a9a", border: "rgba(255,255,255,0.12)", panel: "#2a2a2a", accent: darkColors.primary, onAccent: darkColors.onPrimary },
+  sepia: { bg: "#f4ecd8", fg: "#5b4636", muted: "#7a654d", border: "rgba(91,70,54,0.18)", panel: "#ebe1c9", accent: "#8b5a2b", onAccent: "#fff8ec" },
+};
+
+const THEME_OPTIONS: { label: string; theme: ReaderThemeName }[] = [
+  { label: "Claro", theme: "light" },
+  { label: "Oscuro", theme: "dark" },
+  { label: "Sepia", theme: "sepia" },
 ];
 
-const FONT_OPTIONS = [
-  { label: "Default", value: "default" as const },
-  { label: "Serif", value: "serif" as const },
-  { label: "Sans", value: "sans-serif" as const },
-  { label: "Mono", value: "monospace" as const },
+const FONT_OPTIONS: { label: string; value: ReaderTheme["fontFamily"]; preview?: string }[] = [
+  { label: "Original", value: "default" },
+  { label: "Serif", value: "serif", preview: Platform.select({ ios: "Georgia", default: "serif" }) },
+  { label: "Sans", value: "sans-serif", preview: Platform.select({ ios: "Helvetica", default: "sans-serif" }) },
+  { label: "Mono", value: "monospace", preview: Platform.select({ ios: "Menlo", default: "monospace" }) },
 ];
+
+/** `css: null` deja el interlineado que trae el libro. */
+const LINE_HEIGHT_OPTIONS: { label: string; value: ReaderLineHeight; css: number | null }[] = [
+  { label: "Compacto", value: "compact", css: 1.3 },
+  { label: "Normal", value: "normal", css: null },
+  { label: "Amplio", value: "relaxed", css: 1.8 },
+];
+
+const MARGIN_OPTIONS: { label: string; value: ReaderMargin; px: number }[] = [
+  { label: "Normales", value: "normal", px: 0 },
+  { label: "Amplios", value: "wide", px: 20 },
+  { label: "Muy amplios", value: "wider", px: 40 },
+];
+
+function lineHeightCss(value: ReaderLineHeight | undefined) {
+  return LINE_HEIGHT_OPTIONS.find((o) => o.value === (value ?? "normal"))?.css ?? null;
+}
+
+function marginPx(value: ReaderMargin | undefined) {
+  return MARGIN_OPTIONS.find((o) => o.value === (value ?? "normal"))?.px ?? 0;
+}
+
+/** Alto de las franjas fijas con el capítulo (arriba) y la página (abajo). */
+const RUNNING_HEAD_HEIGHT = 32;
 
 interface TocItem {
   label: string;
@@ -94,11 +139,126 @@ function ToolbarButton({
   );
 }
 
-function SummaryStat({ value, label, color }: { value: string; label: string; color: string }) {
+function SummaryStat({ value, label, palette }: { value: string; label: string; palette: ReaderPalette }) {
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <Text style={{ fontSize: 22, fontWeight: "bold", color }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{label}</Text>
+      <Text style={{ fontSize: 22, fontWeight: "bold", color: palette.fg }}>{value}</Text>
+      <Text style={{ fontSize: 12, color: palette.muted, marginTop: 2 }}>{label}</Text>
+    </View>
+  );
+}
+
+/** Hoja inferior de los paneles del lector (ajustes, índice, citas). */
+function ReaderSheet({
+  visible,
+  title,
+  onClose,
+  palette,
+  bottomInset,
+  children,
+}: {
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  palette: ReaderPalette;
+  bottomInset: number;
+  children: ReactNode;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel={`Cerrar ${title.toLowerCase()}`}
+      />
+      <View
+        style={{
+          backgroundColor: palette.bg,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          paddingHorizontal: 24,
+          paddingTop: 12,
+          paddingBottom: bottomInset + 24,
+          maxHeight: "75%",
+        }}
+      >
+        <View style={{ alignSelf: "center", width: 36, height: 4, borderRadius: 2, backgroundColor: palette.border, marginBottom: 8 }} />
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          <Text accessibilityRole="header" style={{ flex: 1, fontSize: 17, fontWeight: "bold", color: palette.fg }}>
+            {title}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+            hitSlop={8}
+            style={{ width: 44, height: 44, alignItems: "flex-end", justifyContent: "center" }}
+          >
+            <Ionicons name="close" size={24} color={palette.fg} />
+          </Pressable>
+        </View>
+        {children}
+      </View>
+    </Modal>
+  );
+}
+
+function SettingLabel({ children, palette }: { children: string; palette: ReaderPalette }) {
+  return <Text style={{ fontSize: 13, color: palette.muted, marginTop: 16, marginBottom: 8 }}>{children}</Text>;
+}
+
+/** Fila de opciones excluyentes; la elegida va con el color de acento. */
+function OptionRow<T extends string>({
+  options,
+  value,
+  onChange,
+  palette,
+  groupLabel,
+}: {
+  options: { label: string; value: T; preview?: string }[];
+  value: T;
+  onChange: (value: T) => void;
+  palette: ReaderPalette;
+  groupLabel: string;
+}) {
+  return (
+    <View style={{ flexDirection: "row", gap: 8 }} accessibilityRole="radiogroup" accessibilityLabel={groupLabel}>
+      {options.map((opt) => {
+        const selected = opt.value === value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onChange(opt.value)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            style={{
+              flex: 1,
+              minHeight: 44,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingHorizontal: 4,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: selected ? palette.accent : palette.border,
+              backgroundColor: selected ? palette.accent : palette.panel,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{
+                fontSize: 13,
+                fontFamily: opt.preview,
+                color: selected ? palette.onAccent : palette.fg,
+                fontWeight: selected ? "600" : "400",
+              }}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -133,7 +293,9 @@ export default function ReaderScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showToc, setShowToc] = useState(false);
   const [showHighlight, setShowHighlight] = useState(false);
-  const [showQuoteHint, setShowQuoteHint] = useState(false);
+  const [showQuotes, setShowQuotes] = useState(false);
+  // Las barras se superponen al texto: mostrarlas u ocultarlas no repagina el libro.
+  const [chromeOpacity] = useState(() => new Animated.Value(1));
   const [toc, setToc] = useState<TocItem[]>([]);
   // page/total: páginas de pantalla del libro con la letra actual (0 mientras no se pueden estimar).
   const [pageInfo, setPageInfo] = useState({ page: 0, total: 0, percent: 0, chapter: "", location: 0 });
@@ -171,17 +333,18 @@ export default function ReaderScreen() {
 
   const readerHtml = useMemo(() => getBundledReaderHtml(), []);
 
-  // La pista de "cómo guardar una cita" se oculta sola.
   useEffect(() => {
-    if (!showQuoteHint) return;
-    const timeout = setTimeout(() => setShowQuoteHint(false), 4000);
-    return () => clearTimeout(timeout);
-  }, [showQuoteHint]);
+    Animated.timing(chromeOpacity, {
+      toValue: toolbarVisible ? 1 : 0,
+      duration: 160,
+      useNativeDriver: Platform.OS !== "web",
+    }).start();
+  }, [toolbarVisible, chromeOpacity]);
 
-  // Otra letra o tipografía cambia cuánto texto entra por página: se vuelve a medir.
+  // Otra letra, tipografía, interlineado o margen cambia cuánto texto entra por página: se vuelve a medir.
   useEffect(() => {
     pageSamplesRef.current = {};
-  }, [readerSettings.fontSize, readerSettings.fontFamily]);
+  }, [readerSettings.fontSize, readerSettings.fontFamily, readerSettings.lineHeight, readerSettings.margin]);
 
   // Keep screen awake on native
   useEffect(() => {
@@ -347,6 +510,8 @@ export default function ReaderScreen() {
         sendToWebView({ type: "setTheme", theme: readerSettings.theme });
         sendToWebView({ type: "setFontSize", size: readerSettings.fontSize });
         sendToWebView({ type: "setFontFamily", family: readerSettings.fontFamily });
+        sendToWebView({ type: "setLineHeight", value: lineHeightCss(readerSettings.lineHeight) });
+        sendToWebView({ type: "setMargin", px: marginPx(readerSettings.margin) });
         // Restore existing highlights
         for (const q of existingQuotes) {
           if (q.cfi) sendToWebView({ type: "highlight", cfi: q.cfi, color: q.color });
@@ -393,7 +558,6 @@ export default function ReaderScreen() {
 
       case "selected":
         setPendingQuote({ text: msg.text ?? "", cfi: msg.cfi ?? "" });
-        setShowQuoteHint(false);
         Haptics.selectionAsync();
         break;
 
@@ -419,6 +583,21 @@ export default function ReaderScreen() {
         setLoading(false);
         break;
     }
+  }
+
+  function changeSettings(partial: Partial<ReaderTheme>) {
+    useReaderSettingsStore.getState().updateSettings(partial);
+    if (partial.theme) sendToWebView({ type: "setTheme", theme: partial.theme });
+    if (partial.fontSize) sendToWebView({ type: "setFontSize", size: partial.fontSize });
+    if (partial.fontFamily) sendToWebView({ type: "setFontFamily", family: partial.fontFamily });
+    if (partial.lineHeight) sendToWebView({ type: "setLineHeight", value: lineHeightCss(partial.lineHeight) });
+    if (partial.margin) sendToWebView({ type: "setMargin", px: marginPx(partial.margin) });
+  }
+
+  function goToQuote(cfi: string) {
+    sendToWebView({ type: "goto", cfi });
+    setShowQuotes(false);
+    setToolbarVisible(false);
   }
 
   function handleSaveHighlight() {
@@ -484,93 +663,63 @@ export default function ReaderScreen() {
   }
 
   if (!book || !book.epubUri) {
+    const fallback = PALETTES[readerSettings.theme];
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "#888", fontSize: 16 }}>Este libro no tiene ePub asociado</Text>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: fallback.bg }}>
+        <Text style={{ color: fallback.muted, fontSize: 16 }}>Este libro no tiene ePub asociado</Text>
         <Pressable accessibilityRole="button" onPress={handleBack} style={{ marginTop: 16, minHeight: 44, justifyContent: "center" }}>
-          <Text style={{ color: "#007AFF", fontSize: 16 }}>Volver</Text>
+          <Text style={{ color: fallback.accent, fontSize: 16 }}>Volver</Text>
         </Pressable>
       </View>
     );
   }
 
   const isWeb = Platform.OS === "web";
-
-  const themeBg = readerSettings.theme === "dark" ? "#1a1a1a" : readerSettings.theme === "sepia" ? "#f4ecd8" : "#ffffff";
-  const themeFg = readerSettings.theme === "dark" ? "#e0e0e0" : readerSettings.theme === "sepia" ? "#5b4636" : "#1a1a1a";
-  // Acentos de la app según el tema del lector (no el del sistema), para que contrasten con el fondo.
+  const palette = PALETTES[readerSettings.theme];
   const ui = readerSettings.theme === "dark" ? darkColors : lightColors;
   const currentChapter = pageInfo.chapter.trim();
-  const panelBg = readerSettings.theme === "dark" ? "#262626" : readerSettings.theme === "sepia" ? "#ebe1c9" : "#f5f5f5";
-  const dividerColor = readerSettings.theme === "dark" ? "#444" : readerSettings.theme === "sepia" ? "#d8ccb0" : "#ddd";
+  const pageLabel = loading || readerError
+    ? ""
+    : pageInfo.total > 0
+      ? `${pageInfo.page} de ${pageInfo.total}`
+      : `${pageInfo.percent}%`;
+  const chromeHidden = !toolbarVisible;
+  const quotes = [...existingQuotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const quoteHint = `${isWeb ? "Seleccioná" : "Mantené presionado"} un texto para guardarlo como cita.`;
 
   return (
-    <View style={{ flex: 1, backgroundColor: themeBg }}>
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Top toolbar — always takes space, content hidden via opacity */}
-      <View
-        style={{
-          paddingTop: insets.top + 4,
-          paddingBottom: 4,
-          paddingHorizontal: 8,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          backgroundColor: themeBg,
-          borderBottomWidth: 1,
-          borderBottomColor: readerSettings.theme === "dark" ? "#333" : "#e0e0e0",
-          opacity: toolbarVisible ? 1 : 0,
-        }}
-        pointerEvents={toolbarVisible ? "auto" : "none"}
-      >
-        <Pressable
-          onPress={handleBack}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          hitSlop={8}
-          style={{ width: 44, height: 44, justifyContent: "center" }}
-        >
-          <Ionicons name="chevron-back" size={24} color={ui.primary} />
-        </Pressable>
-        <Text
-          style={{ flex: 1, textAlign: "center", fontSize: 14, fontWeight: "600", color: themeFg, marginHorizontal: 8 }}
-          numberOfLines={1}
-        >
-          {book.title}
+      <StatusBar style={readerSettings.theme === "dark" ? "light" : "dark"} />
+
+      {/* Franja fija: capítulo actual */}
+      <View style={{ paddingTop: insets.top, height: insets.top + RUNNING_HEAD_HEIGHT, justifyContent: "center", paddingHorizontal: 56 }}>
+        <Text numberOfLines={1} style={{ textAlign: "center", fontSize: 12, color: palette.muted }}>
+          {currentChapter || book.title}
         </Text>
-        <View style={{ flexDirection: "row" }}>
-          <ToolbarButton
-            icon="bookmark-outline"
-            label="Cómo guardar una cita"
-            color={ui.primary}
-            onPress={() => setShowQuoteHint(true)}
-          />
-          <ToolbarButton icon="list-outline" label="Tabla de contenidos" color={ui.primary} onPress={() => setShowToc(true)} />
-          <ToolbarButton icon="text-outline" label="Ajustes de lectura" color={ui.primary} onPress={() => setShowSettings(true)} />
-        </View>
       </View>
 
       {/* Reader view */}
       <View style={{ flex: 1 }}>
         {loading && !readerError && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator size="large" color={ui.primary} />
+            <ActivityIndicator size="large" color={palette.accent} />
           </View>
         )}
         {readerError && (
-          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: themeBg }}>
-            <Text style={{ color: themeFg, textAlign: "center" }}>{readerError}</Text>
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: palette.bg }}>
+            <Text style={{ color: palette.fg, textAlign: "center" }}>{readerError}</Text>
             {epubMissing && (
               <Pressable
                 onPress={handleReattachEpub}
                 accessibilityRole="button"
-                style={{ marginTop: 20, minHeight: 44, paddingHorizontal: 20, borderRadius: 22, justifyContent: "center", backgroundColor: ui.primary }}
+                style={{ marginTop: 20, minHeight: 44, paddingHorizontal: 20, borderRadius: 22, justifyContent: "center", backgroundColor: palette.accent }}
               >
-                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Volver a adjuntar el ePub</Text>
+                <Text style={{ color: palette.onAccent, fontSize: 16, fontWeight: "600" }}>Volver a adjuntar el ePub</Text>
               </Pressable>
             )}
             <Pressable accessibilityRole="button" onPress={handleBack} style={{ marginTop: 12, minHeight: 44, justifyContent: "center" }}>
-              <Text style={{ color: ui.primary, fontSize: 16 }}>Volver</Text>
+              <Text style={{ color: palette.accent, fontSize: 16 }}>Volver</Text>
             </Pressable>
           </View>
         )}
@@ -579,23 +728,111 @@ export default function ReaderScreen() {
             ref={webViewRef}
             html={readerHtml}
             onMessage={handleWebViewMessage}
-            style={{ flex: 1, backgroundColor: themeBg }}
+            style={{ flex: 1, backgroundColor: palette.bg }}
           />
         ) : (
           <NativeWebView
             ref={webViewRef}
             html={readerHtml}
             onMessage={handleWebViewMessage}
-            style={{ flex: 1, backgroundColor: themeBg }}
+            style={{ flex: 1, backgroundColor: palette.bg }}
           />
         )}
       </View>
+
+      {/* Franja fija: página */}
+      <View style={{ height: insets.bottom + RUNNING_HEAD_HEIGHT, paddingBottom: insets.bottom, justifyContent: "center" }}>
+        <Text style={{ textAlign: "center", fontSize: 12, color: palette.muted }}>{pageLabel}</Text>
+      </View>
+
+      {/* Barra superior: se superpone al texto */}
+      <Animated.View
+        pointerEvents={chromeHidden ? "none" : "auto"}
+        accessibilityElementsHidden={chromeHidden}
+        importantForAccessibility={chromeHidden ? "no-hide-descendants" : "auto"}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          opacity: chromeOpacity,
+          paddingTop: insets.top + 4,
+          paddingBottom: 4,
+          paddingHorizontal: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: palette.bg,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: palette.border,
+        }}
+      >
+        <Pressable
+          onPress={handleBack}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          hitSlop={8}
+          style={{ width: 44, height: 44, justifyContent: "center", alignItems: "center" }}
+        >
+          <Ionicons name="chevron-back" size={24} color={palette.fg} />
+        </Pressable>
+        <View style={{ flex: 1, marginHorizontal: 4 }}>
+          <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: "600", color: palette.fg }}>
+            {book.title}
+          </Text>
+          {currentChapter !== "" && (
+            <Text numberOfLines={1} style={{ fontSize: 12, color: palette.muted, marginTop: 1 }}>
+              {currentChapter}
+            </Text>
+          )}
+        </View>
+        <ToolbarButton icon="bookmarks-outline" label="Citas de este libro" color={palette.fg} onPress={() => setShowQuotes(true)} />
+        <ToolbarButton icon="list-outline" label="Tabla de contenidos" color={palette.fg} onPress={() => setShowToc(true)} />
+        <ToolbarButton icon="text-outline" label="Ajustes de lectura" color={palette.fg} onPress={() => setShowSettings(true)} />
+      </Animated.View>
+
+      {/* Barra inferior: progreso en el libro */}
+      <Animated.View
+        pointerEvents={chromeHidden ? "none" : "auto"}
+        accessibilityElementsHidden={chromeHidden}
+        importantForAccessibility={chromeHidden ? "no-hide-descendants" : "auto"}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: chromeOpacity,
+          paddingHorizontal: 20,
+          paddingTop: 12,
+          paddingBottom: insets.bottom + 12,
+          backgroundColor: palette.bg,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: palette.border,
+        }}
+      >
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Avance en el libro"
+          accessibilityValue={{ min: 0, max: 100, now: pageInfo.percent }}
+          style={{ height: 3, borderRadius: 2, backgroundColor: palette.panel, overflow: "hidden" }}
+        >
+          <View style={{ width: `${pageInfo.percent}%`, height: "100%", backgroundColor: palette.accent }} />
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10 }}>
+          <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: palette.fg }}>
+            {pageInfo.total > 0 ? `Pág. ${pageInfo.page} de ${pageInfo.total}` : `${pageInfo.percent}% leído`}
+          </Text>
+          <Text style={{ fontSize: 13, color: palette.muted }}>
+            {pageInfo.total > 0 ? `${pageInfo.percent}% · ` : ""}
+            {formatTime(elapsed)}
+          </Text>
+        </View>
+      </Animated.View>
 
       {/* Selección de texto → guardar como cita */}
       {pendingQuote && !showHighlight && (
         <View
           pointerEvents="box-none"
-          style={{ position: "absolute", left: 0, right: 0, bottom: insets.bottom + 64, alignItems: "center", zIndex: 20 }}
+          style={{ position: "absolute", left: 0, right: 0, bottom: insets.bottom + 72, alignItems: "center", zIndex: 20 }}
         >
           <Pressable
             onPress={handleConfirmQuote}
@@ -608,7 +845,7 @@ export default function ReaderScreen() {
               minHeight: 44,
               paddingHorizontal: 18,
               borderRadius: 22,
-              backgroundColor: ui.primary,
+              backgroundColor: palette.accent,
               shadowColor: "#000",
               shadowOpacity: 0.2,
               shadowRadius: 8,
@@ -616,62 +853,11 @@ export default function ReaderScreen() {
               elevation: 4,
             }}
           >
-            <Ionicons name="bookmark-outline" size={18} color={ui.onPrimary} />
-            <Text style={{ color: ui.onPrimary, fontSize: 15, fontWeight: "600" }}>Guardar cita</Text>
+            <Ionicons name="bookmark-outline" size={18} color={palette.onAccent} />
+            <Text style={{ color: palette.onAccent, fontSize: 15, fontWeight: "600" }}>Guardar cita</Text>
           </Pressable>
         </View>
       )}
-
-      {/* Pista: cómo se guarda una cita */}
-      {showQuoteHint && !pendingQuote && (
-        <View
-          pointerEvents="none"
-          style={{ position: "absolute", left: 16, right: 16, bottom: insets.bottom + 64, alignItems: "center", zIndex: 20 }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              borderRadius: 12,
-              backgroundColor: readerSettings.theme === "dark" ? "#333" : "#1a1a1a",
-            }}
-          >
-            <Ionicons name="finger-print-outline" size={18} color="#fff" />
-            <Text style={{ color: "#fff", fontSize: 14, flexShrink: 1 }}>
-              {isWeb ? "Seleccioná un texto" : "Mantené presionado un texto"} para guardarlo como cita
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Bottom toolbar — always takes space, content hidden via opacity */}
-      <View
-        style={{
-          paddingVertical: 10,
-          paddingHorizontal: 16,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          backgroundColor: themeBg,
-          borderTopWidth: 1,
-          borderTopColor: readerSettings.theme === "dark" ? "#333" : "#e0e0e0",
-          paddingBottom: 20,
-          opacity: toolbarVisible ? 1 : 0,
-        }}
-        pointerEvents={toolbarVisible ? "auto" : "none"}
-      >
-        <Text style={{ fontSize: 13, color: themeFg }}>
-          {pageInfo.chapter ? `${pageInfo.chapter} · ` : ""}
-          {pageInfo.total > 0 ? `Pág. ${pageInfo.page} de ${pageInfo.total} · ` : ""}
-          {pageInfo.percent}%
-        </Text>
-        <Text style={{ fontSize: 13, color: "#888" }}>
-          {formatTime(elapsed)}
-        </Text>
-      </View>
 
       {/* Closing an ePub reader completes the same reading session as the manual flow. */}
       <Modal
@@ -686,7 +872,7 @@ export default function ReaderScreen() {
         >
           <View
             style={{
-              backgroundColor: themeBg,
+              backgroundColor: palette.bg,
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               paddingHorizontal: 24,
@@ -694,7 +880,7 @@ export default function ReaderScreen() {
               paddingBottom: Math.max(insets.bottom, 16),
             }}
           >
-            <Text style={{ fontSize: 22, fontWeight: "bold", color: themeFg, marginBottom: 16 }}>
+            <Text style={{ fontSize: 22, fontWeight: "bold", color: palette.fg, marginBottom: 16 }}>
               ¡Buena sesión!
             </Text>
 
@@ -704,15 +890,15 @@ export default function ReaderScreen() {
                 borderRadius: 12,
                 paddingVertical: 14,
                 marginBottom: 20,
-                backgroundColor: readerSettings.theme === "dark" ? "#262626" : "rgba(0,0,0,0.04)",
+                backgroundColor: palette.panel,
               }}
             >
-              <SummaryStat value={formatTime(elapsed)} label="tiempo" color={themeFg} />
-              <SummaryStat value={String(summaryPages)} label={summaryPages === 1 ? "página" : "páginas"} color={themeFg} />
-              <SummaryStat value={`${pageInfo.percent}%`} label="del libro" color={themeFg} />
+              <SummaryStat value={formatTime(elapsed)} label="tiempo" palette={palette} />
+              <SummaryStat value={String(summaryPages)} label={summaryPages === 1 ? "página" : "páginas"} palette={palette} />
+              <SummaryStat value={`${pageInfo.percent}%`} label="del libro" palette={palette} />
             </View>
 
-            <Text style={{ fontSize: 14, fontWeight: "600", color: themeFg, marginBottom: 6 }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: palette.fg, marginBottom: 6 }}>
               Nota (opcional)
             </Text>
             <TextInput
@@ -720,16 +906,16 @@ export default function ReaderScreen() {
               onChangeText={setSessionNote}
               accessibilityLabel="Nota de la sesión"
               placeholder="¿Qué te pareció lo que leíste?"
-              placeholderTextColor="#888"
+              placeholderTextColor={palette.muted}
               multiline
               numberOfLines={3}
               style={{
                 borderWidth: 1,
-                borderColor: readerSettings.theme === "dark" ? "#555" : "#ddd",
+                borderColor: palette.border,
                 borderRadius: 10,
                 padding: 12,
                 fontSize: 15,
-                color: themeFg,
+                color: palette.fg,
                 minHeight: 80,
                 textAlignVertical: "top",
                 marginBottom: 20,
@@ -739,9 +925,9 @@ export default function ReaderScreen() {
             <Pressable
               onPress={handleSaveSession}
               accessibilityRole="button"
-              style={{ backgroundColor: ui.primary, minHeight: 50, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
+              style={{ backgroundColor: palette.accent, minHeight: 50, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
             >
-              <Text style={{ color: ui.onPrimary, fontWeight: "600", fontSize: 16 }}>Guardar sesión</Text>
+              <Text style={{ color: palette.onAccent, fontWeight: "600", fontSize: 16 }}>Guardar sesión</Text>
             </Pressable>
             <View style={{ flexDirection: "row", marginTop: 4 }}>
               <Pressable
@@ -749,7 +935,7 @@ export default function ReaderScreen() {
                 accessibilityRole="button"
                 style={{ flex: 1, alignItems: "center", justifyContent: "center", minHeight: 48 }}
               >
-                <Text style={{ color: ui.primary, fontSize: 15, fontWeight: "600" }}>Seguir leyendo</Text>
+                <Text style={{ color: palette.accent, fontSize: 15, fontWeight: "600" }}>Seguir leyendo</Text>
               </Pressable>
               <Pressable
                 onPress={handleDiscardSession}
@@ -763,200 +949,200 @@ export default function ReaderScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Settings modal */}
-      <Modal visible={showSettings} transparent animationType="slide">
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}
-          onPress={() => setShowSettings(false)}
-          accessibilityRole="button"
-          accessibilityLabel="Cerrar ajustes de lectura"
-        />
-        <View
-          style={{
-            backgroundColor: themeBg,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            padding: 24,
-            paddingBottom: 40,
-          }}
-        >
-          <Text style={{ fontSize: 17, fontWeight: "bold", marginBottom: 20, color: themeFg }}>
-            Ajustes de lectura
-          </Text>
-
-          {/* Font size */}
-          <Text style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>Tamaño de fuente</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 }}>
+      <ReaderSheet
+        visible={showSettings}
+        title="Ajustes de lectura"
+        onClose={() => setShowSettings(false)}
+        palette={palette}
+        bottomInset={insets.bottom}
+      >
+        <ScrollView>
+          <SettingLabel palette={palette}>Tamaño de letra</SettingLabel>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Pressable
-              onPress={() => {
-                const size = Math.max(60, readerSettings.fontSize - 10);
-                useReaderSettingsStore.getState().updateSettings({ fontSize: size });
-                sendToWebView({ type: "setFontSize", size });
-              }}
+              onPress={() => changeSettings({ fontSize: Math.max(60, readerSettings.fontSize - 10) })}
+              disabled={readerSettings.fontSize <= 60}
               accessibilityRole="button"
               accessibilityLabel="Achicar texto"
-              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" }}
+              accessibilityState={{ disabled: readerSettings.fontSize <= 60 }}
+              style={{ flex: 1, height: 44, borderRadius: 10, backgroundColor: palette.panel, justifyContent: "center", alignItems: "center", opacity: readerSettings.fontSize <= 60 ? 0.4 : 1 }}
             >
-              <Text style={{ fontSize: 18, fontWeight: "bold" }}>A-</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: palette.fg }}>A</Text>
             </Pressable>
-            <Text style={{ fontSize: 15, fontWeight: "600", color: themeFg }}>{readerSettings.fontSize}%</Text>
-            <Pressable
-              onPress={() => {
-                const size = Math.min(200, readerSettings.fontSize + 10);
-                useReaderSettingsStore.getState().updateSettings({ fontSize: size });
-                sendToWebView({ type: "setFontSize", size });
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Agrandar texto"
-              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" }}
-            >
-              <Text style={{ fontSize: 18, fontWeight: "bold" }}>A+</Text>
-            </Pressable>
-          </View>
-
-          {/* Theme */}
-          <Text style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>Tema</Text>
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-            {THEME_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt.theme}
-                onPress={() => {
-                  useReaderSettingsStore.getState().updateSettings({ theme: opt.theme });
-                  sendToWebView({ type: "setTheme", theme: opt.theme });
-                }}
-                accessibilityRole="radio"
-                accessibilityLabel={`Tema ${opt.label}`}
-                accessibilityState={{ selected: readerSettings.theme === opt.theme }}
-                style={{
-                  flex: 1,
-                  minHeight: 44,
-                  justifyContent: "center",
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                  backgroundColor: opt.bg,
-                  borderWidth: 2,
-                  borderColor: readerSettings.theme === opt.theme ? ui.primary : "#ddd",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: opt.fg, fontSize: 13, fontWeight: "600" }}>{opt.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Font family */}
-          <Text style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>Tipografía</Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {FONT_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt.value}
-                onPress={() => {
-                  useReaderSettingsStore.getState().updateSettings({ fontFamily: opt.value });
-                  sendToWebView({ type: "setFontFamily", family: opt.value });
-                }}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: readerSettings.fontFamily === opt.value }}
-                style={{
-                  flex: 1,
-                  minHeight: 44,
-                  justifyContent: "center",
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: readerSettings.fontFamily === opt.value ? ui.primary : "#ddd",
-                  backgroundColor: readerSettings.fontFamily === opt.value ? ui.primary : "transparent",
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: readerSettings.fontFamily === opt.value ? ui.onPrimary : themeFg,
-                    fontWeight: readerSettings.fontFamily === opt.value ? "600" : "400",
-                  }}
-                >
-                  {opt.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      </Modal>
-
-      {/* TOC modal */}
-      <Modal visible={showToc} transparent animationType="slide" onRequestClose={() => setShowToc(false)}>
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}
-          onPress={() => setShowToc(false)}
-          accessibilityRole="button"
-          accessibilityLabel="Cerrar índice"
-        />
-        <View
-          style={{
-            backgroundColor: themeBg,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            padding: 24,
-            paddingBottom: 40,
-            maxHeight: "60%",
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-            <Text style={{ flex: 1, fontSize: 17, fontWeight: "bold", color: themeFg }}>
-              Tabla de contenidos
+            <Text style={{ minWidth: 52, textAlign: "center", fontSize: 15, fontWeight: "600", color: palette.fg }}>
+              {readerSettings.fontSize}%
             </Text>
             <Pressable
-              onPress={() => setShowToc(false)}
+              onPress={() => changeSettings({ fontSize: Math.min(200, readerSettings.fontSize + 10) })}
+              disabled={readerSettings.fontSize >= 200}
               accessibilityRole="button"
-              accessibilityLabel="Cerrar"
-              hitSlop={8}
-              style={{ width: 44, height: 44, alignItems: "flex-end", justifyContent: "center" }}
+              accessibilityLabel="Agrandar texto"
+              accessibilityState={{ disabled: readerSettings.fontSize >= 200 }}
+              style={{ flex: 1, height: 44, borderRadius: 10, backgroundColor: palette.panel, justifyContent: "center", alignItems: "center", opacity: readerSettings.fontSize >= 200 ? 0.4 : 1 }}
             >
-              <Ionicons name="close" size={24} color={themeFg} />
+              <Text style={{ fontSize: 20, fontWeight: "600", color: palette.fg }}>A</Text>
             </Pressable>
           </View>
-          <ScrollView>
-            {toc.length === 0 ? (
-              <Text style={{ color: "#888", fontSize: 14 }}>No hay tabla de contenidos disponible.</Text>
-            ) : (
-              toc.map((item, i) => {
-                const isCurrent = currentChapter !== "" && item.label.trim() === currentChapter;
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => {
-                      sendToWebView({ type: "goto", cfi: item.href });
-                      setShowToc(false);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isCurrent }}
+
+          <SettingLabel palette={palette}>Tema</SettingLabel>
+          <View style={{ flexDirection: "row", gap: 8 }} accessibilityRole="radiogroup" accessibilityLabel="Tema">
+            {THEME_OPTIONS.map((opt) => {
+              const selected = readerSettings.theme === opt.theme;
+              const swatch = PALETTES[opt.theme];
+              return (
+                <Pressable
+                  key={opt.theme}
+                  onPress={() => changeSettings({ theme: opt.theme })}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`Tema ${opt.label}`}
+                  accessibilityState={{ selected }}
+                  style={{
+                    flex: 1,
+                    minHeight: 48,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderRadius: 10,
+                    backgroundColor: swatch.bg,
+                    borderWidth: selected ? 2 : 1,
+                    borderColor: selected ? palette.accent : palette.border,
+                  }}
+                >
+                  <Text style={{ color: swatch.fg, fontSize: 13, fontWeight: "600" }}>{opt.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <SettingLabel palette={palette}>Tipografía</SettingLabel>
+          <OptionRow
+            options={FONT_OPTIONS}
+            value={readerSettings.fontFamily}
+            onChange={(fontFamily) => changeSettings({ fontFamily })}
+            palette={palette}
+            groupLabel="Tipografía"
+          />
+
+          <SettingLabel palette={palette}>Interlineado</SettingLabel>
+          <OptionRow
+            options={LINE_HEIGHT_OPTIONS}
+            value={readerSettings.lineHeight ?? "normal"}
+            onChange={(lineHeight) => changeSettings({ lineHeight })}
+            palette={palette}
+            groupLabel="Interlineado"
+          />
+
+          <SettingLabel palette={palette}>Márgenes</SettingLabel>
+          <OptionRow
+            options={MARGIN_OPTIONS}
+            value={readerSettings.margin ?? "normal"}
+            onChange={(margin) => changeSettings({ margin })}
+            palette={palette}
+            groupLabel="Márgenes"
+          />
+        </ScrollView>
+      </ReaderSheet>
+
+      <ReaderSheet
+        visible={showToc}
+        title="Tabla de contenidos"
+        onClose={() => setShowToc(false)}
+        palette={palette}
+        bottomInset={insets.bottom}
+      >
+        <ScrollView>
+          {toc.length === 0 ? (
+            <Text style={{ color: palette.muted, fontSize: 14 }}>No hay tabla de contenidos disponible.</Text>
+          ) : (
+            toc.map((item, i) => {
+              const isCurrent = currentChapter !== "" && item.label.trim() === currentChapter;
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => {
+                    sendToWebView({ type: "goto", cfi: item.href });
+                    setShowToc(false);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isCurrent }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    minHeight: 44,
+                    paddingVertical: 10,
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: palette.border,
+                  }}
+                >
+                  <Text
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      minHeight: 44,
-                      paddingVertical: 10,
-                      borderBottomWidth: 1,
-                      borderBottomColor: readerSettings.theme === "dark" ? "#333" : "#eee",
+                      flex: 1,
+                      fontSize: 15,
+                      color: isCurrent ? palette.accent : palette.fg,
+                      fontWeight: isCurrent ? "600" : "400",
                     }}
                   >
-                    <Text
-                      style={{
-                        flex: 1,
-                        fontSize: 15,
-                        color: isCurrent ? ui.primary : themeFg,
-                        fontWeight: isCurrent ? "600" : "400",
-                      }}
-                    >
-                      {item.label}
+                    {item.label}
+                  </Text>
+                  {isCurrent && <Ionicons name="bookmark" size={16} color={palette.accent} />}
+                </Pressable>
+              );
+            })
+          )}
+        </ScrollView>
+      </ReaderSheet>
+
+      <ReaderSheet
+        visible={showQuotes}
+        title="Citas de este libro"
+        onClose={() => setShowQuotes(false)}
+        palette={palette}
+        bottomInset={insets.bottom}
+      >
+        {quotes.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 24, gap: 8 }}>
+            <Ionicons name="bookmarks-outline" size={32} color={palette.muted} />
+            <Text style={{ fontSize: 15, fontWeight: "600", color: palette.fg }}>Todavía no guardaste citas</Text>
+            <Text style={{ fontSize: 14, color: palette.muted, textAlign: "center" }}>{quoteHint}</Text>
+          </View>
+        ) : (
+          <ScrollView>
+            <Text style={{ fontSize: 13, color: palette.muted, marginBottom: 4 }}>{quoteHint}</Text>
+            {quotes.map((q) => (
+              <Pressable
+                key={q.id}
+                onPress={() => goToQuote(q.cfi!)}
+                accessibilityRole="button"
+                accessibilityHint="Abre el libro en esta cita"
+                style={{
+                  flexDirection: "row",
+                  gap: 12,
+                  paddingVertical: 12,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: palette.border,
+                }}
+              >
+                <View
+                  style={{
+                    width: 4,
+                    borderRadius: 2,
+                    backgroundColor: COLOR_OPTIONS.find((c) => c.color === q.color)?.hex ?? "#FBBF24",
+                  }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text numberOfLines={3} style={{ fontSize: 15, lineHeight: 21, color: palette.fg }}>
+                    &ldquo;{q.text}&rdquo;
+                  </Text>
+                  {q.note ? (
+                    <Text numberOfLines={2} style={{ fontSize: 13, color: palette.muted, marginTop: 4 }}>
+                      {q.note}
                     </Text>
-                    {isCurrent && <Ionicons name="bookmark" size={16} color={ui.primary} />}
-                  </Pressable>
-                );
-              })
-            )}
+                  ) : null}
+                </View>
+              </Pressable>
+            ))}
           </ScrollView>
-        </View>
-      </Modal>
+        )}
+      </ReaderSheet>
 
       {/* Highlight modal */}
       <Modal visible={showHighlight} transparent animationType="fade" onRequestClose={handleCancelHighlight}>
@@ -975,7 +1161,7 @@ export default function ReaderScreen() {
               onPress={() => {}}
               accessible={false}
               style={{
-                backgroundColor: themeBg,
+                backgroundColor: palette.bg,
                 borderTopLeftRadius: 20,
                 borderTopRightRadius: 20,
                 padding: 24,
@@ -983,7 +1169,7 @@ export default function ReaderScreen() {
               }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-                <Text style={{ flex: 1, fontSize: 17, fontWeight: "bold", color: themeFg }}>Guardar cita</Text>
+                <Text style={{ flex: 1, fontSize: 17, fontWeight: "bold", color: palette.fg }}>Guardar cita</Text>
                 <Pressable
                   onPress={handleCancelHighlight}
                   accessibilityRole="button"
@@ -991,14 +1177,14 @@ export default function ReaderScreen() {
                   hitSlop={8}
                   style={{ width: 44, height: 44, alignItems: "flex-end", justifyContent: "center" }}
                 >
-                  <Ionicons name="close" size={24} color={themeFg} />
+                  <Ionicons name="close" size={24} color={palette.fg} />
                 </Pressable>
               </View>
 
               {/* Selected text preview */}
               <View
                 style={{
-                  backgroundColor: panelBg,
+                  backgroundColor: palette.panel,
                   borderRadius: 8,
                   padding: 12,
                   marginBottom: 16,
@@ -1006,7 +1192,7 @@ export default function ReaderScreen() {
                   borderLeftColor: COLOR_OPTIONS.find((c) => c.color === highlightColor)?.hex ?? "#FBBF24",
                 }}
               >
-                <Text style={{ fontSize: 14, fontStyle: "italic", lineHeight: 20, color: themeFg }} numberOfLines={5}>
+                <Text style={{ fontSize: 14, fontStyle: "italic", lineHeight: 20, color: palette.fg }} numberOfLines={5}>
                   &ldquo;{selectedText}&rdquo;
                 </Text>
               </View>
@@ -1027,7 +1213,7 @@ export default function ReaderScreen() {
                         height: 44,
                         borderRadius: 22,
                         borderWidth: 2,
-                        borderColor: selected ? themeFg : "transparent",
+                        borderColor: selected ? palette.fg : "transparent",
                         alignItems: "center",
                         justifyContent: "center",
                       }}
@@ -1044,17 +1230,17 @@ export default function ReaderScreen() {
                 onChangeText={setHighlightNote}
                 accessibilityLabel="Nota de la cita, opcional"
                 placeholder="Nota (opcional)"
-                placeholderTextColor="#888"
+                placeholderTextColor={palette.muted}
                 multiline
                 style={{
                   borderWidth: 1,
-                  borderColor: dividerColor,
+                  borderColor: palette.border,
                   borderRadius: 8,
                   padding: 10,
                   fontSize: 14,
                   minHeight: 60,
                   marginBottom: 16,
-                  color: themeFg,
+                  color: palette.fg,
                   textAlignVertical: "top",
                 }}
               />
@@ -1064,13 +1250,13 @@ export default function ReaderScreen() {
                 accessibilityRole="button"
                 onPress={handleSaveHighlight}
                 style={{
-                  backgroundColor: ui.primary,
+                  backgroundColor: palette.accent,
                   paddingVertical: 14,
                   borderRadius: 10,
                   alignItems: "center",
                 }}
               >
-                <Text style={{ color: ui.onPrimary, fontWeight: "600", fontSize: 16 }}>
+                <Text style={{ color: palette.onAccent, fontWeight: "600", fontSize: 16 }}>
                   Guardar cita
                 </Text>
               </Pressable>

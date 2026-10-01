@@ -39,7 +39,8 @@ export function getReaderHtml(jszipScript: string, epubScript: string): string {
   var rendition = null;
   var currentCfi = null;
   var locationsReady = false;
-  var currentFontCss = '';
+  // Hojas propias que se inyectan en cada capítulo: tipografía e interlineado.
+  var injectedCss = { font: '', spacing: '' };
   var selectionSent = false;
   var suppressClickUntil = 0;
   var reportTimer = null;
@@ -69,6 +70,8 @@ ${READER_GESTURES_JS}
       case 'setTheme': applyTheme(data.theme); break;
       case 'setFontSize': if (rendition) { rendition.themes.fontSize(data.size + '%'); scheduleReport(); } break;
       case 'setFontFamily': applyFont(data.family); scheduleReport(); break;
+      case 'setLineHeight': applyLineHeight(data.value); scheduleReport(); break;
+      case 'setMargin': applyMargin(data.px); scheduleReport(); break;
       case 'highlight': addHighlight(data.cfi, data.color); break;
       case 'clearSelection': clearSelection(); break;
       case 'ping': send({ type: 'ready' }); break;
@@ -107,13 +110,8 @@ ${READER_GESTURES_JS}
 
       // Hook to inject custom font CSS into each epub content document
       rendition.hooks.content.register(function(contents) {
-        if (currentFontCss) {
-          var doc = contents.document;
-          var style = doc.createElement('style');
-          style.id = 'aleph-font';
-          style.textContent = currentFontCss;
-          doc.head.appendChild(style);
-        }
+        injectCss(contents.document, 'font');
+        injectCss(contents.document, 'spacing');
       });
 
       // Gestos dentro de cada documento del libro: tocar los costados o deslizar pasa de página,
@@ -323,19 +321,32 @@ ${READER_GESTURES_JS}
                   family === 'serif' ? 'Georgia, serif' :
                   family === 'sans-serif' ? '-apple-system, Helvetica, Arial, sans-serif' :
                   'Menlo, Courier, monospace';
-    currentFontCss = fontStr ? 'body, p, div, span, a, li, h1, h2, h3, h4, h5, h6 { font-family: ' + fontStr + ' !important; }' : '';
-    // Apply to already-rendered content
-    rendition.getContents().forEach(function(c) {
-      var doc = c.document;
-      var old = doc.getElementById('aleph-font');
-      if (old) old.remove();
-      if (currentFontCss) {
-        var style = doc.createElement('style');
-        style.id = 'aleph-font';
-        style.textContent = currentFontCss;
-        doc.head.appendChild(style);
-      }
-    });
+    injectedCss.font = fontStr ? 'body, p, div, span, a, li, h1, h2, h3, h4, h5, h6 { font-family: ' + fontStr + ' !important; }' : '';
+    rendition.getContents().forEach(function(c) { injectCss(c.document, 'font'); });
+  }
+
+  // Sin valor se respeta el interlineado del libro.
+  function applyLineHeight(value) {
+    injectedCss.spacing = value ? 'body, p, div, li, blockquote { line-height: ' + value + ' !important; }' : '';
+    if (!rendition) return;
+    rendition.getContents().forEach(function(c) { injectCss(c.document, 'spacing'); });
+  }
+
+  // Margen lateral extra, sumado al que ya deja epub.js entre columnas.
+  function applyMargin(px) {
+    document.getElementById('viewer').style.padding = '0 ' + (px || 0) + 'px';
+    if (rendition) rendition.resize();
+  }
+
+  function injectCss(doc, name) {
+    var id = 'aleph-' + name;
+    var old = doc.getElementById(id);
+    if (old) old.remove();
+    if (!injectedCss[name]) return;
+    var style = doc.createElement('style');
+    style.id = id;
+    style.textContent = injectedCss[name];
+    doc.head.appendChild(style);
   }
 
   function turnPage(direction) {
