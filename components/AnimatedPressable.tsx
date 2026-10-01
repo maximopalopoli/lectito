@@ -33,11 +33,11 @@ export default function AnimatedPressable({
   }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(scaleDown, SPRING_CONFIG);
+    scale.set(withSpring(scaleDown, SPRING_CONFIG));
   }, [scale, scaleDown]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, SPRING_CONFIG);
+    scale.set(withSpring(1, SPRING_CONFIG));
   }, [scale]);
 
   const handlePress = useCallback(

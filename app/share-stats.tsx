@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import ViewShot from 'react-native-view-shot';
+import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -13,7 +13,7 @@ import { useSessionsStore } from '@/store/sessions';
 export default function ShareStatsScreen() {
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
-  const viewShotRef = useRef<ViewShot>(null);
+  const viewShotRef = useRef<ViewShotRef>(null);
 
   const stats = useMemo(() => {
     const booksRead = books.filter((b) => b.status === 'DONE').length;

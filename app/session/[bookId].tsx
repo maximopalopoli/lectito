@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { usePreventRemove } from "@react-navigation/native";
+import { usePreventRemove } from "expo-router/react-navigation";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";

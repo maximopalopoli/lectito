@@ -109,7 +109,7 @@ const CORNER_WIDTH = 3;
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "#000",
     justifyContent: "center",
     alignItems: "center",
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   overlayFill: {
     flex: 1,

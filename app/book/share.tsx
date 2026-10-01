@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import ViewShot from 'react-native-view-shot';
+import ViewShot, { type ViewShotRef } from 'react-native-view-shot';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -13,7 +13,7 @@ export default function ShareBookScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const books = useBooksStore((s) => s.books);
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
-  const viewShotRef = useRef<ViewShot>(null);
+  const viewShotRef = useRef<ViewShotRef>(null);
 
   if (!book) {
     return (

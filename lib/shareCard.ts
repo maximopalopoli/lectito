@@ -1,9 +1,9 @@
 import { Platform } from 'react-native';
-import ViewShot from 'react-native-view-shot';
+import type { ViewShotRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 
 export async function captureAndShare(
-  viewShotRef: React.RefObject<ViewShot | null>,
+  viewShotRef: React.RefObject<ViewShotRef | null>,
 ): Promise<void> {
   if (!viewShotRef.current?.capture) return;
 

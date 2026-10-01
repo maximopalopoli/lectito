@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "aleph",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -18,7 +17,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -30,7 +28,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Aleph necesita acceso a la cámara para escanear códigos de barras de libros."
+          "cameraPermission": "Aleph necesita acceso a la c\u00e1mara para escanear c\u00f3digos de barras de libros."
         }
       ],
       [

@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { usePreventRemove, type NavigationAction } from "@react-navigation/native";
+import { usePreventRemove, type NavigationAction } from "expo-router/react-navigation";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 
@@ -1068,7 +1068,9 @@ const WebIframe = forwardRef<any, ReaderViewProps>(
   function WebIframe({ html, onMessage, style }, ref) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const onMessageRef = useRef(onMessage);
-  onMessageRef.current = onMessage;
+  useLayoutEffect(() => {
+    onMessageRef.current = onMessage;
+  });
 
   useImperativeHandle(ref, () => ({
     postMessage: (json: string) => {

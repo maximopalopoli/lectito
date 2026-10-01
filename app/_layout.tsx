@@ -1,11 +1,6 @@
 import { useEffect } from "react";
-import { Stack } from "expo-router";
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
