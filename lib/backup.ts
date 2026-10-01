@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as DocumentPicker from 'expo-document-picker';
+import { pickDocument } from '@/lib/pickDocument';
 
 import { BOOKS_STORAGE_KEY, useBooksStore } from '@/store/books';
 import { QUOTES_STORAGE_KEY, useQuotesStore } from '@/store/quotes';
@@ -10,7 +10,7 @@ import { GOAL_STORAGE_KEY, useGoalsStore } from '@/store/goals';
 import { READER_STORAGE_KEY, useReaderSettingsStore, type ReaderData } from '@/store/readerSettings';
 import { LISTS_STORAGE_KEY, useListsStore } from '@/store/lists';
 import { isReadingList } from '@/lib/listValidation';
-import { readEpubAsBase64, restoreEpub } from '@/lib/epubStorage';
+import { EpubUnavailableError, readEpubAsBase64, restoreEpub } from '@/lib/epubStorage';
 import { flushStorageWrites, saveJsonMany } from '@/lib/storage';
 import type { Book, Goal, Quote, ReadingList, Session } from '@/types';
 
@@ -26,19 +26,33 @@ interface BackupData {
   lists: ReadingList[];
 }
 
-export async function exportBackup(destination: 'share' | 'save' = 'share'): Promise<boolean> {
+/** `skippedEpubs` lists the titles whose ePub could not be read; they are exported without it. */
+export type ExportResult = { saved: false } | { saved: true; skippedEpubs: string[] };
+
+export async function exportBackup(destination: 'share' | 'save' = 'share'): Promise<ExportResult> {
   await flushStorageWrites();
-  const books = useBooksStore.getState().books;
+  const storedBooks = useBooksStore.getState().books;
   const sessions = useSessionsStore.getState().sessions;
   const goal = useGoalsStore.getState().goal;
   const quotes = useQuotesStore.getState().quotes;
   const lists = useListsStore.getState().lists;
   const { positions, settings } = useReaderSettingsStore.getState();
   const epubs: Record<string, string> = {};
-  for (const book of books) {
+  const skippedEpubs: string[] = [];
+  const books = [];
+  for (const book of storedBooks) {
     if (book.epubUri) {
-      epubs[book.id] = await readEpubAsBase64(book.epubUri);
+      try {
+        epubs[book.id] = await readEpubAsBase64(book.epubUri);
+      } catch (error) {
+        if (!(error instanceof EpubUnavailableError)) throw error;
+        // One unreadable file must not block backing up everything else.
+        skippedEpubs.push(book.title);
+        books.push({ ...book, epubUri: null });
+        continue;
+      }
     }
+    books.push(book);
   }
 
   const exportedAt = new Date().toISOString();
@@ -66,12 +80,12 @@ export async function exportBackup(destination: 'share' | 'save' = 'share'): Pro
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    return true;
+    return { saved: true, skippedEpubs };
   }
 
   if (Platform.OS === 'android' && destination === 'save') {
     const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-    if (!permission.granted) return false;
+    if (!permission.granted) return { saved: false };
 
     const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
       permission.directoryUri,
@@ -86,7 +100,7 @@ export async function exportBackup(destination: 'share' | 'save' = 'share'): Pro
       await FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
       throw error;
     }
-    return true;
+    return { saved: true, skippedEpubs };
   }
 
   const filePath = `${FileSystem.cacheDirectory}${filename}`;
@@ -97,23 +111,18 @@ export async function exportBackup(destination: 'share' | 'save' = 'share'): Pro
     mimeType: 'application/json',
     dialogTitle: 'Exportar backup de Aleph',
   });
-  return true;
+  return { saved: true, skippedEpubs };
 }
 
 export async function importBackup(): Promise<{ books: number; sessions: number; missingEpubs: number }> {
-  const result = await DocumentPicker.getDocumentAsync({
-    type: 'application/json',
-    copyToCacheDirectory: true,
-  });
-
-  if (result.canceled) {
+  const pickedUri = await pickDocument('application/json');
+  if (!pickedUri) {
     throw new Error('Cancelado');
   }
 
-  const asset = result.assets[0];
   const content = Platform.OS === 'web'
-    ? await (await fetch(asset.uri)).text()
-    : await FileSystem.readAsStringAsync(asset.uri, {
+    ? await (await fetch(pickedUri)).text()
+    : await FileSystem.readAsStringAsync(pickedUri, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 

@@ -19,16 +19,22 @@ export default function BackupScreen() {
     setExporting(true);
     setMessage(null);
     try {
-      const saved = await exportBackup(destination);
-      if (!saved) return;
+      const result = await exportBackup(destination);
+      if (!result.saved) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const done = destination === "save"
+        ? "Backup guardado en la carpeta elegida"
+        : Platform.OS === "web"
+          ? "Descarga iniciada"
+          : "Se abrió el menú para compartir. Comprobá que hayas guardado el archivo.";
+      if (result.skippedEpubs.length === 0) {
+        setMessage({ kind: "success", text: done });
+        return;
+      }
       setMessage({
-        kind: "success",
-        text: destination === "save"
-          ? "Backup guardado en la carpeta elegida"
-          : Platform.OS === "web"
-            ? "Descarga iniciada"
-            : "Se abrió el menú para compartir. Comprobá que hayas guardado el archivo.",
+        kind: "error",
+        text: `${done.endsWith(".") ? done : `${done}.`} No incluye el ePub de: ${result.skippedEpubs.join(", ")}, `
+          + "porque no se pudo leer el archivo. Volvé a adjuntarlo desde el lector y exportá otra vez.",
       });
     } catch (e) {
       setMessage({ kind: "error", text: e instanceof Error ? e.message : "Error al exportar" });

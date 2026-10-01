@@ -521,7 +521,6 @@ function ReadingRow({
     // Sin accessibilityRole="button": contiene el botón de play, y en web
     // eso generaría un <button> anidado dentro de otro.
     <AnimatedPressable
-      accessibilityRole="button"
       onPress={onOpen}
       haptic="light"
       accessibilityLabel={`Ver ${book.title}`}

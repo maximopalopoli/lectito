@@ -12,7 +12,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { randomUUID } from "expo-crypto";
 
-import * as DocumentPicker from "expo-document-picker";
+import { pickDocument } from "@/lib/pickDocument";
 import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
@@ -144,12 +144,8 @@ export default function AddBookScreen() {
 
   const handleImportEpub = useCallback(async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "application/epub+zip",
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled || result.assets.length === 0) return;
+      const pickedUri = await pickDocument("application/epub+zip");
+      if (!pickedUri) return;
 
       requestRef.current++;
       setLoading(true);
@@ -159,11 +155,10 @@ export default function AddBookScreen() {
       setSelected(null);
       setEpubUri(null);
 
-      const asset = result.assets[0];
-      const book = await parseEpub(asset.uri);
+      const book = await parseEpub(pickedUri);
 
       // Persist ePub to permanent storage
-      const permanentUri = await persistEpub(asset.uri, randomUUID());
+      const permanentUri = await persistEpub(pickedUri, randomUUID());
       setEpubUri(permanentUri);
 
       setResults([book]);

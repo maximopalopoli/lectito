@@ -4,7 +4,7 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
 import { exportBackup, importBackup } from '../backup';
-import { readEpubAsBase64, restoreEpub } from '../epubStorage';
+import { EpubUnavailableError, readEpubAsBase64, restoreEpub } from '../epubStorage';
 import { useBooksStore } from '@/store/books';
 import { useSessionsStore } from '@/store/sessions';
 import { useQuotesStore } from '@/store/quotes';
@@ -28,6 +28,7 @@ jest.mock('expo-file-system/legacy', () => ({
 }));
 jest.mock('expo-sharing', () => ({ shareAsync: jest.fn() }));
 jest.mock('../epubStorage', () => ({
+  EpubUnavailableError: jest.requireActual('../epubStorage').EpubUnavailableError,
   readEpubAsBase64: jest.fn(),
   restoreEpub: jest.fn(),
 }));
@@ -108,6 +109,25 @@ test('exports an ePub and reader position with the backup', async () => {
   expect(Sharing.shareAsync).toHaveBeenCalled();
 });
 
+test('backs up everything else when an ePub file cannot be read', async () => {
+  jest.mocked(readEpubAsBase64).mockRejectedValue(new EpubUnavailableError());
+
+  await expect(exportBackup('share')).resolves.toEqual({ saved: true, skippedEpubs: ['Ejemplo'] });
+
+  const backup = JSON.parse(jest.mocked(FileSystem.writeAsStringAsync).mock.calls[0][1]);
+  expect(backup.epubs).toEqual({});
+  // Without its file the book must not claim an ePub, or importing this backup would be rejected.
+  expect(backup.books).toEqual([{ ...book, epubUri: null }]);
+  expect(backup.reader).toEqual(reader);
+});
+
+test('still fails the export on unexpected ePub read errors', async () => {
+  jest.mocked(readEpubAsBase64).mockRejectedValue(new Error('Out of memory'));
+
+  await expect(exportBackup('share')).rejects.toThrow('Out of memory');
+  expect(Sharing.shareAsync).not.toHaveBeenCalled();
+});
+
 test('saves a backup to the Android folder selected by the user', async () => {
   Platform.OS = 'android';
   jest.mocked(readEpubAsBase64).mockResolvedValue('ZXB1Yg==');
@@ -116,7 +136,7 @@ test('saves a backup to the Android folder selected by the user', async () => {
   });
   jest.mocked(FileSystem.StorageAccessFramework.createFileAsync).mockResolvedValue('content://backup.json');
 
-  await expect(exportBackup('save')).resolves.toBe(true);
+  await expect(exportBackup('save')).resolves.toEqual({ saved: true, skippedEpubs: [] });
 
   expect(FileSystem.StorageAccessFramework.createFileAsync).toHaveBeenCalledWith(
     'content://chosen-folder', expect.stringMatching(/^aleph-backup-\d{4}-\d{2}-\d{2}-\d{6}$/), 'application/json',
@@ -144,7 +164,7 @@ test('does not create a backup when Android folder selection is cancelled', asyn
   jest.mocked(readEpubAsBase64).mockResolvedValue('ZXB1Yg==');
   jest.mocked(FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync).mockResolvedValue({ granted: false });
 
-  await expect(exportBackup('save')).resolves.toBe(false);
+  await expect(exportBackup('save')).resolves.toEqual({ saved: false });
 
   expect(FileSystem.StorageAccessFramework.createFileAsync).not.toHaveBeenCalled();
   expect(Sharing.shareAsync).not.toHaveBeenCalled();

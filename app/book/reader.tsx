@@ -16,6 +16,7 @@ import { Stack, useLocalSearchParams, useNavigation, useRouter } from "expo-rout
 import { usePreventRemove, type NavigationAction } from "expo-router/react-navigation";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
+import { randomUUID } from "expo-crypto";
 
 import { useBooksStore } from "@/store/books";
 import { useSessionsStore } from "@/store/sessions";
@@ -23,7 +24,8 @@ import { useQuotesStore } from "@/store/quotes";
 import { useReaderSettingsStore } from "@/store/readerSettings";
 import { confirmThen } from "@/lib/confirm";
 import { recordSession } from "@/lib/recordSession";
-import { readEpubAsBase64 } from "@/lib/epubStorage";
+import { EpubUnavailableError, persistEpub, readEpubAsBase64 } from "@/lib/epubStorage";
+import { pickDocument } from "@/lib/pickDocument";
 import { getBundledReaderHtml } from "@/lib/readerAssets";
 import { darkColors, lightColors } from "@/lib/theme";
 import type { QuoteColor, ReaderThemeName } from "@/types";
@@ -125,6 +127,7 @@ export default function ReaderScreen() {
   // State
   const [loading, setLoading] = useState(true);
   const [readerError, setReaderError] = useState<string | null>(null);
+  const [epubMissing, setEpubMissing] = useState(false);
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showToc, setShowToc] = useState(false);
@@ -275,9 +278,25 @@ export default function ReaderScreen() {
       }
     }).catch((error) => {
       setReaderError(error instanceof Error ? error.message : "No se pudo abrir el ePub.");
+      setEpubMissing(error instanceof EpubUnavailableError);
       setLoading(false);
     });
   }, [book?.epubUri, bookId]);
+
+  // Sessions, position, and highlights belong to the book, so a new copy of the file picks them up.
+  const handleReattachEpub = useCallback(async () => {
+    try {
+      const pickedUri = await pickDocument("application/epub+zip");
+      if (!pickedUri) return;
+      const epubUri = await persistEpub(pickedUri, randomUUID());
+      setReaderError(null);
+      setEpubMissing(false);
+      setLoading(true);
+      useBooksStore.getState().updateBook(bookId!, { epubUri });
+    } catch {
+      setReaderError("No se pudo guardar el ePub elegido. Probá de nuevo.");
+    }
+  }, [bookId]);
 
   function sendToWebView(msg: Record<string, unknown>) {
     if (webViewRef.current) {
@@ -523,6 +542,18 @@ export default function ReaderScreen() {
         {readerError && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: themeBg }}>
             <Text style={{ color: themeFg, textAlign: "center" }}>{readerError}</Text>
+            {epubMissing && (
+              <Pressable
+                onPress={handleReattachEpub}
+                accessibilityRole="button"
+                style={{ marginTop: 20, minHeight: 44, paddingHorizontal: 20, borderRadius: 22, justifyContent: "center", backgroundColor: ui.primary }}
+              >
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Volver a adjuntar el ePub</Text>
+              </Pressable>
+            )}
+            <Pressable accessibilityRole="button" onPress={handleBack} style={{ marginTop: 12, minHeight: 44, justifyContent: "center" }}>
+              <Text style={{ color: ui.primary, fontSize: 16 }}>Volver</Text>
+            </Pressable>
           </View>
         )}
         {isWeb ? (
