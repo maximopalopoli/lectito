@@ -19,8 +19,10 @@ import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCover from "@/components/BookCover";
 import ScreenHeader from "@/components/ScreenHeader";
 import { confirmThen } from "@/lib/confirm";
+import { readingProgress } from "@/lib/progress";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
+import { useReaderSettingsStore } from "@/store/readerSettings";
 import { useSessionsStore } from "@/store/sessions";
 
 type TimerStatus = "IDLE" | "RUNNING" | "PAUSED" | "STOPPED";
@@ -56,6 +58,7 @@ export default function SessionScreen() {
   const addSession = useSessionsStore((s) => s.addSession);
 
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
+  const readerPosition = useReaderSettingsStore((s) => (bookId ? s.positions[bookId] : undefined));
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [status, setStatus] = useState<TimerStatus>("IDLE");
@@ -233,7 +236,12 @@ export default function SessionScreen() {
               <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
                 {book.authors.join(", ")}
               </Text>
-              {hasPageCount && (
+              {book.epubUri ? (
+                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 4 }} numberOfLines={1}>
+                  {/* En ePub las "páginas" son internas del lector: se muestra el porcentaje. */}
+                  {readingProgress(book, readerPosition).percent}% leído
+                </Text>
+              ) : hasPageCount && (
                 <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 4 }}>
                   Ibas por la pág. {book.currentPage} de {book.pageCount}
                 </Text>

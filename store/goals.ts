@@ -5,6 +5,7 @@ import { removeStored, reportReadError, saveJson } from '@/lib/storage';
 import type { Goal } from '@/types';
 
 const STORAGE_KEY = 'aleph-goal';
+const SUGGESTION_KEY = 'aleph-goal-suggestion-dismissed';
 
 function saveGoal(goal: Goal | null) {
   if (goal) {
@@ -19,6 +20,9 @@ export interface GoalsState {
   _hydrated: boolean;
   setGoal: (goal: Goal) => void;
   clearGoal: () => void;
+  /** El usuario descartó la sugerencia de objetivo del inicio. */
+  suggestionDismissed: boolean;
+  dismissSuggestion: () => void;
 }
 
 export const useGoalsStore = create<GoalsState>()((set, get) => {
@@ -35,6 +39,12 @@ export const useGoalsStore = create<GoalsState>()((set, get) => {
       reportReadError(STORAGE_KEY);
     });
 
+  AsyncStorage.getItem(SUGGESTION_KEY)
+    .then((raw) => {
+      if (raw) set({ suggestionDismissed: true });
+    })
+    .catch(() => {});
+
   return {
     goal: null,
     _hydrated: false,
@@ -49,6 +59,13 @@ export const useGoalsStore = create<GoalsState>()((set, get) => {
       if (!get()._hydrated) return;
       saveGoal(null);
       set({ goal: null });
+    },
+
+    suggestionDismissed: false,
+
+    dismissSuggestion: () => {
+      void saveJson(SUGGESTION_KEY, true);
+      set({ suggestionDismissed: true });
     },
   };
 });

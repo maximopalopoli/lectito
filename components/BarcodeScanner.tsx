@@ -1,6 +1,9 @@
 import { useRef, useCallback } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
+
+import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
 
 interface BarcodeScannerProps {
   onScanned: (isbn: string) => void;
@@ -11,6 +14,7 @@ export default function BarcodeScanner({
   onScanned,
   onClose,
 }: BarcodeScannerProps) {
+  const colors = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const scannedRef = useRef(false);
 
@@ -23,25 +27,35 @@ export default function BarcodeScanner({
     [onScanned],
   );
 
-  if (!permission) {
+  // Pantallas previas a la cámara: siguen el tema de la app (la vista de cámara queda oscura).
+  if (!permission || !permission.granted) {
+    // Si ya se negó sin opción de volver a preguntar, el sistema no muestra el diálogo: hay que ir a Ajustes.
+    const blocked = !!permission && !permission.canAskAgain;
     return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Cargando cámara...</Text>
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>
-          Aleph necesita acceso a la cámara para escanear códigos de barras.
-        </Text>
-        <Pressable onPress={requestPermission} style={styles.permissionButton}>
-          <Text style={styles.permissionButtonText}>Permitir cámara</Text>
-        </Pressable>
-        <Pressable onPress={onClose} style={styles.cancelButton}>
-          <Text style={styles.cancelText}>Cancelar</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {!permission ? (
+          <Text style={[styles.message, { color: colors.textSecondary }]}>Cargando cámara…</Text>
+        ) : (
+          <>
+            <Ionicons name="camera-outline" size={48} color={colors.icon} style={{ marginBottom: spacing.md }} />
+            <Text style={[styles.message, { color: colors.textPrimary }]}>
+              {blocked
+                ? "El acceso a la cámara está desactivado. Activalo desde los ajustes para escanear códigos de barras."
+                : "Aleph necesita acceso a la cámara para escanear códigos de barras."}
+            </Text>
+            <Pressable
+              onPress={blocked ? () => void Linking.openSettings() : requestPermission}
+              accessibilityRole="button"
+              style={[styles.permissionButton, { backgroundColor: colors.primary }]}
+            >
+              <Text style={[styles.permissionButtonText, { color: colors.onPrimary }]}>
+                {blocked ? "Abrir ajustes" : "Permitir cámara"}
+              </Text>
+            </Pressable>
+          </>
+        )}
+        <Pressable onPress={onClose} accessibilityRole="button" style={styles.cancelButton}>
+          <Text style={[styles.cancelText, { color: colors.primary }]}>Cancelar</Text>
         </Pressable>
       </View>
     );
@@ -80,7 +94,7 @@ export default function BarcodeScanner({
           <Text style={styles.hint}>
             Apuntá la cámara al código de barras del libro
           </Text>
-          <Pressable onPress={onClose} style={styles.closeButton}>
+          <Pressable onPress={onClose} accessibilityRole="button" style={styles.closeButton}>
             <Text style={styles.closeButtonText}>Cancelar</Text>
           </Pressable>
         </View>
@@ -102,30 +116,31 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   message: {
-    color: "#fff",
-    fontSize: 16,
+    fontSize: fontSize.lg,
     textAlign: "center",
-    paddingHorizontal: 32,
-    marginBottom: 16,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.lg,
   },
   permissionButton: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 12,
+    minHeight: 48,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
   },
   permissionButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   cancelButton: {
-    padding: 12,
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    justifyContent: "center",
   },
   cancelText: {
-    color: "#999",
-    fontSize: 15,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -190,9 +205,10 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    minHeight: 44,
+    paddingHorizontal: spacing.xl,
+    justifyContent: "center",
+    borderRadius: radius.lg,
   },
   closeButtonText: {
     color: "#fff",

@@ -121,33 +121,48 @@ function extractISBNs(identifiers: string[]): { isbn13: string | null; isbn10: s
   return { isbn13, isbn10 };
 }
 
+/** Ancho máximo de la tapa guardada en web: va dentro de localStorage, que es chico. */
+const WEB_COVER_MAX_WIDTH = 300;
+
+/**
+ * Re-extrae la tapa de un ePub ya guardado (en base64). Sirve para reparar libros importados
+ * en web cuando la tapa se guardaba como `blob:`, que deja de existir al recargar.
+ */
+export async function extractCoverFromBase64(base64: string, title: string): Promise<string | null> {
+  const zip = await JSZip.loadAsync(base64, { base64: true });
+  const containerXml = await readZipFile(zip, 'META-INF/container.xml');
+  const opfPath = containerXml ? extractAttribute(containerXml, 'rootfile', 'full-path') : null;
+  const opfXml = opfPath ? await readZipFile(zip, opfPath) : null;
+  if (!opfPath || !opfXml) return null;
+  const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : '';
+  return extractCover(zip, opfXml, opfDir, title);
+}
+
 async function extractCover(
   zip: JSZip,
   opfXml: string,
   opfDir: string,
-  _title: string,
+  title: string,
 ): Promise<string | null> {
   const coverHref = findCoverHref(opfXml);
   if (!coverHref) return null;
 
-  const coverPath = coverHref.startsWith('/') ? coverHref.slice(1) : opfDir + coverHref;
-  const coverFile = zip.file(coverPath);
+  const coverFile = zip.file(resolveZipPath(opfDir, coverHref));
   if (!coverFile) return null;
 
   try {
-    const coverBytes = await coverFile.async('uint8array');
-    const ext = coverHref.match(/\.(jpe?g|png|gif|webp)$/i)?.[1] ?? 'jpg';
+    const ext = coverHref.match(/\.(jpe?g|png|gif|webp)$/i)?.[1]?.toLowerCase() ?? 'jpg';
     const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
     if (Platform.OS === 'web') {
-      const blob = new Blob([coverBytes.buffer as ArrayBuffer], { type: mimeType });
-      return URL.createObjectURL(blob);
+      const coverBytes = await coverFile.async('uint8array');
+      return await toCompactDataUrl(coverBytes, mimeType);
     }
 
     // Native: save to document directory
     const FileSystem = await import('expo-file-system/legacy');
-    const safeName = _title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
-    const localPath = `${FileSystem.documentDirectory}cover_${safeName}.${ext}`;
+    const safeName = title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+    const localPath = `${FileSystem.documentDirectory}cover_${safeName}.${ext === 'jpeg' ? 'jpg' : ext}`;
     const coverBase64 = await coverFile.async('base64');
     await FileSystem.writeAsStringAsync(localPath, coverBase64, {
       encoding: FileSystem.EncodingType.Base64,
@@ -155,6 +170,51 @@ async function extractCover(
     return localPath;
   } catch {
     return null;
+  }
+}
+
+/** Resuelve el href del manifiesto (relativo al OPF, a veces con `../` o %20) a una ruta del zip. */
+export function resolveZipPath(opfDir: string, href: string): string {
+  let path = href.split('#')[0];
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // href mal codificado: se usa tal cual.
+  }
+  const parts = (path.startsWith('/') ? path.slice(1) : opfDir + path).split('/');
+  const resolved: string[] = [];
+  for (const part of parts) {
+    if (part === '..') resolved.pop();
+    else if (part !== '.' && part !== '') resolved.push(part);
+  }
+  return resolved.join('/');
+}
+
+/**
+ * En web la tapa se guarda como data URL (un `blob:` muere al recargar), reducida a JPEG
+ * para no llenar localStorage.
+ */
+async function toCompactDataUrl(bytes: Uint8Array, mimeType: string): Promise<string> {
+  const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: mimeType }));
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new window.Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('No se pudo leer la tapa'));
+      image.src = url;
+    });
+    const scale = Math.min(1, WEB_COVER_MAX_WIDTH / img.naturalWidth);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas no disponible');
+    ctx.fillStyle = '#fff'; // las PNG con transparencia no quedan negras en JPEG
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 

@@ -8,18 +8,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
 import { useTheme } from '@/lib/theme';
 import { useQuotesStore } from '@/store/quotes';
 import type { QuoteColor } from '@/types';
 
-const COLORS: { value: QuoteColor; hex: string }[] = [
-  { value: 'yellow', hex: '#FBBF24' },
-  { value: 'blue', hex: '#60A5FA' },
-  { value: 'green', hex: '#34D399' },
-  { value: 'pink', hex: '#F472B6' },
-  { value: 'purple', hex: '#A78BFA' },
+const COLORS: { value: QuoteColor; hex: string; label: string }[] = [
+  { value: 'yellow', hex: '#FBBF24', label: 'Amarillo' },
+  { value: 'blue', hex: '#60A5FA', label: 'Azul' },
+  { value: 'green', hex: '#34D399', label: 'Verde' },
+  { value: 'pink', hex: '#F472B6', label: 'Rosa' },
+  { value: 'purple', hex: '#A78BFA', label: 'Violeta' },
 ];
 
 export default function QuoteFormScreen() {
@@ -93,26 +94,32 @@ export default function QuoteFormScreen() {
           paddingBottom: 12,
         }}
       >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          style={{ minWidth: 80, minHeight: 44, justifyContent: 'center' }}
+        >
           <Text style={{ color: colors.primary, fontSize: 16 }}>Cancelar</Text>
         </Pressable>
         <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary }}>
           {isEditing ? 'Editar cita' : 'Nueva cita'}
         </Text>
-        <View style={{ width: 60 }} />
+        <View style={{ minWidth: 80 }} />
       </View>
 
       <View style={{ paddingHorizontal: 24, gap: 20 }}>
         {/* Quote text */}
         <View>
           <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
-            Cita *
+            Cita
           </Text>
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder="Escribe o pega la cita..."
+            placeholder="Escribí o pegá la cita…"
             placeholderTextColor={colors.textTertiary}
+            accessibilityLabel="Texto de la cita"
+            autoFocus={!isEditing}
             multiline
             style={{
               borderWidth: 1,
@@ -130,12 +137,13 @@ export default function QuoteFormScreen() {
         {/* Page number */}
         <View>
           <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
-            Pagina (opcional)
+            Página <Text style={{ fontWeight: '400', color: colors.textTertiary }}>(opcional)</Text>
           </Text>
           <TextInput
             value={pageStr}
-            onChangeText={setPageStr}
-            placeholder="Numero de pagina"
+            onChangeText={(t) => setPageStr(t.replace(/[^0-9]/g, ''))}
+            placeholder="Número de página"
+            accessibilityLabel="Página"
             placeholderTextColor={colors.textTertiary}
             keyboardType="number-pad"
             style={{
@@ -152,12 +160,13 @@ export default function QuoteFormScreen() {
         {/* Note */}
         <View>
           <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
-            Nota personal (opcional)
+            Nota personal <Text style={{ fontWeight: '400', color: colors.textTertiary }}>(opcional)</Text>
           </Text>
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder="Tu reflexion sobre esta cita..."
+            placeholder="Tu reflexión sobre esta cita…"
+            accessibilityLabel="Nota personal"
             placeholderTextColor={colors.textTertiary}
             multiline
             style={{
@@ -178,21 +187,35 @@ export default function QuoteFormScreen() {
           <Text style={{ fontWeight: '600', fontSize: 15, color: colors.textPrimary, marginBottom: 8 }}>
             Color
           </Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {COLORS.map((c) => (
-              <Pressable
-                key={c.value}
-                onPress={() => setColor(c.value)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: c.hex,
-                  borderWidth: color === c.value ? 3 : 0,
-                  borderColor: colors.textPrimary,
-                }}
-              />
-            ))}
+          <View style={{ flexDirection: 'row', gap: 8 }} accessibilityRole="radiogroup">
+            {COLORS.map((c) => {
+              const active = color === c.value;
+              return (
+                <Pressable
+                  key={c.value}
+                  onPress={() => setColor(c.value)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={c.label}
+                  accessibilityState={{ selected: active }}
+                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: c.hex,
+                      borderWidth: active ? 3 : 0,
+                      borderColor: colors.textPrimary,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {active && <Ionicons name="checkmark" size={18} color="#000" />}
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -200,9 +223,14 @@ export default function QuoteFormScreen() {
         <AnimatedPressable
           onPress={handleSave}
           haptic="medium"
+          disabled={!canSave}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canSave }}
           style={{
-            backgroundColor: canSave ? colors.primary : colors.border,
-            paddingVertical: 14,
+            backgroundColor: colors.primary,
+            opacity: canSave ? 1 : 0.4,
+            minHeight: 50,
+            justifyContent: 'center',
             borderRadius: 10,
             alignItems: 'center',
             marginTop: 8,

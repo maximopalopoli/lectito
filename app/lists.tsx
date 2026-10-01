@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCard from "@/components/BookCard";
 import ScreenHeader from "@/components/ScreenHeader";
 import { useTheme } from "@/lib/theme";
+import { deleteListWithUndo } from "@/lib/undoableActions";
 import { useBooksStore } from "@/store/books";
 import { useListsStore } from "@/store/lists";
 
@@ -19,7 +20,6 @@ export default function ListsScreen() {
   const lists = useListsStore((s) => s.lists);
   const createList = useListsStore((s) => s.createList);
   const renameList = useListsStore((s) => s.renameList);
-  const deleteList = useListsStore((s) => s.deleteList);
   const toggleBook = useListsStore((s) => s.toggleBook);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -65,18 +65,8 @@ export default function ListsScreen() {
 
   function confirmDelete() {
     if (!selectedList) return;
-    const remove = () => {
-      deleteList(selectedList.id);
-      setSelectedId(null);
-    };
-    if (Platform.OS === "web") {
-      if (confirm(`¿Eliminar la lista “${selectedList.name}”? Los libros no se borrarán.`)) remove();
-    } else {
-      Alert.alert("Eliminar lista", `¿Eliminar “${selectedList.name}”? Los libros no se borrarán.`, [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Eliminar", style: "destructive", onPress: remove },
-      ]);
-    }
+    deleteListWithUndo(selectedList.id);
+    setSelectedId(null);
   }
 
   return (
@@ -97,33 +87,40 @@ export default function ListsScreen() {
           </Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
             <AnimatedPressable onPress={() => { setBookQuery(""); setShowBookPicker(true); }} haptic="light"
-              style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 12, alignItems: "center" }}>
-              <Text style={{ color: colors.onPrimary, fontWeight: "600" }}>Agregar libros</Text>
+              accessibilityRole="button"
+              style={{ flex: 1, flexDirection: "row", gap: 6, backgroundColor: colors.primary, borderRadius: 10, minHeight: 48, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="add" size={20} color={colors.onPrimary} />
+              <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>Agregar libros</Text>
             </AnimatedPressable>
-            <Pressable onPress={() => openNameModal("rename")}
-              style={{ paddingHorizontal: 14, justifyContent: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 10 }}>
-              <Text style={{ color: colors.primary }}>Renombrar</Text>
+            <Pressable onPress={() => openNameModal("rename")} accessibilityRole="button"
+              style={{ paddingHorizontal: 14, minHeight: 48, justifyContent: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 10 }}>
+              <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 15 }}>Renombrar</Text>
             </Pressable>
           </View>
 
           {listedBooks.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: 55 }}>
+            <View style={{ alignItems: "center", paddingVertical: 55, paddingHorizontal: 16 }}>
               <Ionicons name="albums-outline" size={48} color={colors.icon} />
-              <Text style={{ color: colors.textSecondary, marginTop: 12 }}>Todavía no hay libros en esta lista.</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: "600", marginTop: 12 }}>La lista está vacía</Text>
+              <Text style={{ color: colors.textTertiary, textAlign: "center", marginTop: 4 }}>
+                Tocá «Agregar libros» para sumar libros de tu biblioteca.
+              </Text>
             </View>
           ) : listedBooks.map((book) => (
             <View key={book.id} style={{ marginBottom: 8 }}>
               <BookCard book={book} onPress={() => router.push(`/book/${book.id}`)} />
               <Pressable onPress={() => toggleBook(selectedList.id, book.id)}
                 accessibilityRole="button" accessibilityLabel={`Quitar ${book.title} de ${selectedList.name}`}
-                style={{ alignSelf: "flex-end", paddingHorizontal: 10, paddingVertical: 5 }}>
-                <Text style={{ color: colors.dangerStrong, fontSize: 13 }}>Quitar de la lista</Text>
+                style={{ alignSelf: "flex-end", paddingHorizontal: 10, minHeight: 40, justifyContent: "center" }}>
+                <Text style={{ color: colors.danger, fontSize: 13, fontWeight: "600" }}>Quitar de la lista</Text>
               </Pressable>
             </View>
           ))}
 
-          <Pressable onPress={confirmDelete} style={{ alignItems: "center", paddingVertical: 16, marginTop: 16 }}>
-            <Text style={{ color: colors.dangerStrong }}>Eliminar lista</Text>
+          <Pressable onPress={confirmDelete} accessibilityRole="button"
+            style={{ flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", minHeight: 48, marginTop: 16 }}>
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            <Text style={{ color: colors.danger, fontWeight: "600", fontSize: 15 }}>Eliminar lista</Text>
           </Pressable>
         </ScrollView>
       ) : (
@@ -131,14 +128,18 @@ export default function ListsScreen() {
           <Text style={{ color: colors.textSecondary, marginBottom: 18 }}>
             Organizá libros en colecciones propias sin cambiar su estado de lectura.
           </Text>
-          <AnimatedPressable onPress={() => openNameModal("create")} haptic="light"
-            style={{ backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 13, alignItems: "center", marginBottom: 22 }}>
-            <Text style={{ color: colors.onPrimary, fontWeight: "600" }}>+ Nueva lista</Text>
+          <AnimatedPressable onPress={() => openNameModal("create")} haptic="light" accessibilityRole="button"
+            style={{ flexDirection: "row", gap: 6, backgroundColor: colors.primary, borderRadius: 10, minHeight: 48, alignItems: "center", justifyContent: "center", marginBottom: 22 }}>
+            <Ionicons name="add" size={20} color={colors.onPrimary} />
+            <Text style={{ color: colors.onPrimary, fontWeight: "600", fontSize: 15 }}>Nueva lista</Text>
           </AnimatedPressable>
           {lists.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: 45 }}>
+            <View style={{ alignItems: "center", paddingVertical: 45, paddingHorizontal: 16 }}>
               <Ionicons name="albums-outline" size={48} color={colors.icon} />
-              <Text style={{ color: colors.textSecondary, marginTop: 12 }}>Todavía no creaste ninguna lista.</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: "600", marginTop: 12 }}>Todavía no tenés listas</Text>
+              <Text style={{ color: colors.textTertiary, textAlign: "center", marginTop: 4 }}>
+                Por ejemplo: «Para regalar», «Club de lectura» o «Verano».
+              </Text>
             </View>
           ) : lists.map((list) => (
             <Pressable key={list.id} onPress={() => setSelectedId(list.id)} accessibilityRole="button"
@@ -165,11 +166,19 @@ export default function ListsScreen() {
             </Text>
             <TextInput value={nameDraft} onChangeText={(value) => { setNameDraft(value); setNameError(null); }}
               placeholder="Nombre de la lista" placeholderTextColor={colors.textTertiary} maxLength={60}
+              accessibilityLabel="Nombre de la lista" returnKeyType="done" onSubmitEditing={saveName}
               autoFocus style={{ color: colors.textPrimary, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16 }} />
-            {nameError && <Text style={{ color: colors.dangerStrong, marginTop: 8 }}>{nameError}</Text>}
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 20, marginTop: 22 }}>
-              <Pressable onPress={() => setNameMode(null)}><Text style={{ color: colors.textSecondary }}>Cancelar</Text></Pressable>
-              <Pressable onPress={saveName}><Text style={{ color: colors.primary, fontWeight: "700" }}>Guardar</Text></Pressable>
+            {nameError && <Text style={{ color: colors.danger, marginTop: 8 }}>{nameError}</Text>}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+              <Pressable onPress={() => setNameMode(null)} accessibilityRole="button"
+                style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: "center" }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 15 }}>Cancelar</Text>
+              </Pressable>
+              <Pressable onPress={saveName} disabled={!nameDraft.trim()} accessibilityRole="button"
+                accessibilityState={{ disabled: !nameDraft.trim() }}
+                style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: "center", opacity: nameDraft.trim() ? 1 : 0.4 }}>
+                <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 15 }}>Guardar</Text>
+              </Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -179,11 +188,17 @@ export default function ListsScreen() {
         <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 16 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: "700" }}>Libros de la lista</Text>
-            <Pressable onPress={() => setShowBookPicker(false)}><Text style={{ color: colors.primary, fontSize: 16 }}>Listo</Text></Pressable>
+            <Pressable onPress={() => setShowBookPicker(false)} accessibilityRole="button"
+              style={{ minHeight: 44, paddingLeft: 12, justifyContent: "center" }}>
+              <Text style={{ color: colors.primary, fontSize: 16, fontWeight: "600" }}>Listo</Text>
+            </Pressable>
           </View>
-          <TextInput value={bookQuery} onChangeText={setBookQuery} placeholder="Buscar libro"
-            placeholderTextColor={colors.textTertiary}
-            style={{ marginHorizontal: 20, marginBottom: 12, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, color: colors.textPrimary }} />
+          <View style={{ flexDirection: "row", alignItems: "center", marginHorizontal: 20, marginBottom: 12, paddingLeft: 12, minHeight: 44, borderRadius: 10, backgroundColor: colors.surface }}>
+            <Ionicons name="search" size={18} color={colors.textTertiary} />
+            <TextInput value={bookQuery} onChangeText={setBookQuery} placeholder="Buscar por título o autor"
+              placeholderTextColor={colors.textTertiary} accessibilityLabel="Buscar libro"
+              style={{ flex: 1, minWidth: 0, paddingHorizontal: 8, paddingVertical: 10, fontSize: 16, color: colors.textPrimary }} />
+          </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
             {pickerBooks.map((book) => {
               const checked = selectedList?.bookIds.includes(book.id) ?? false;

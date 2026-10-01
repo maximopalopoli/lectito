@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
@@ -58,6 +59,7 @@ function buildRecs(
 export default function RecommendationsScreen() {
   const router = useRouter();
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const books = useBooksStore((s) => s.books);
   const { cache, setCache } = useRecommendationsStore();
 
@@ -293,13 +295,16 @@ export default function RecommendationsScreen() {
               <FlatList
                 data={eligibleBooks}
                 keyExtractor={(b) => b.id}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 + insets.bottom }}
                 renderItem={({ item }) => {
                   const selected = selectedIds.has(item.id);
                   return (
                     <AnimatedPressable
                       onPress={() => toggleBook(item.id)}
                       haptic="light"
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
+                      accessibilityLabel={`${item.title}, ${item.authors.join(', ')}`}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
@@ -356,6 +361,7 @@ export default function RecommendationsScreen() {
                   left: 0,
                   right: 0,
                   padding: 16,
+                  paddingBottom: 16 + insets.bottom,
                   backgroundColor: colors.background,
                   borderTopWidth: 1,
                   borderTopColor: colors.divider,
@@ -365,22 +371,28 @@ export default function RecommendationsScreen() {
                   <Text
                     style={{
                       fontSize: 13,
-                      color: colors.warning,
+                      color: colors.textSecondary,
                       textAlign: 'center',
                       marginBottom: 8,
                     }}
                   >
-                    Seleccioná al menos {MIN_SELECTION} libros
+                    {selectedIds.size === 0
+                      ? `Elegí al menos ${MIN_SELECTION} libros`
+                      : `Elegí ${MIN_SELECTION - selectedIds.size} más`}
                   </Text>
                 )}
                 <AnimatedPressable
                   onPress={handleSearch}
                   haptic="medium"
                   disabled={selectedIds.size < MIN_SELECTION}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: selectedIds.size < MIN_SELECTION }}
                   style={{
-                    backgroundColor: selectedIds.size < MIN_SELECTION ? colors.icon : colors.primary,
+                    backgroundColor: colors.primary,
+                    opacity: selectedIds.size < MIN_SELECTION ? 0.4 : 1,
                     borderRadius: 12,
-                    paddingVertical: 14,
+                    minHeight: 50,
+                    justifyContent: 'center',
                     alignItems: 'center',
                   }}
                 >
@@ -408,7 +420,7 @@ export default function RecommendationsScreen() {
           data={recommendations.slice(0, visibleCount)}
           keyExtractor={(item) => item.openLibraryKey}
           renderItem={({ item }) => <RecommendationCard recommendation={item} />}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 + insets.bottom }}
           ListHeaderComponent={
             <Text style={{ fontSize: 13, color: colors.textTertiary, marginBottom: 12 }}>
               Basado en {selectedIds.size} libros seleccionados
@@ -428,7 +440,8 @@ export default function RecommendationsScreen() {
                   borderWidth: 1,
                   borderColor: colors.primary,
                   borderRadius: 10,
-                  paddingVertical: 12,
+                  minHeight: 48,
+                  justifyContent: 'center',
                   alignItems: 'center',
                   marginTop: 4,
                 }}
@@ -467,7 +480,8 @@ export default function RecommendationsScreen() {
             style={{
               backgroundColor: colors.primary,
               borderRadius: 10,
-              paddingVertical: 12,
+              minHeight: 48,
+              justifyContent: 'center',
               paddingHorizontal: 28,
             }}
           >

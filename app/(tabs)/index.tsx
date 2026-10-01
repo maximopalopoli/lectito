@@ -9,6 +9,7 @@ import BookCover from "@/components/BookCover";
 import CircleIconButton from "@/components/CircleIconButton";
 import { getGoalProgress, getStreak, getTodayStats } from "@/lib/stats";
 import { readingProgress } from "@/lib/progress";
+import { showToast } from "@/lib/toast";
 import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useGoalsStore } from "@/store/goals";
@@ -23,6 +24,11 @@ export default function HomeScreen() {
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
   const goal = useGoalsStore((s) => s.goal);
+  const goalsReady = useGoalsStore((s) => s._hydrated);
+  const suggestionDismissed = useGoalsStore((s) => s.suggestionDismissed);
+  const setGoal = useGoalsStore((s) => s.setGoal);
+  const clearGoal = useGoalsStore((s) => s.clearGoal);
+  const dismissSuggestion = useGoalsStore((s) => s.dismissSuggestion);
 
   const todayStats = useMemo(() => getTodayStats(sessions), [sessions]);
   const streak = useMemo(() => getStreak(sessions), [sessions]);
@@ -49,6 +55,7 @@ export default function HomeScreen() {
   const [current, ...others] = readingBooks;
   // Primer uso: sin libros ni sesiones no tiene sentido mostrar el resumen de hoy en cero.
   const isNewUser = books.length === 0 && sessions.length === 0;
+  const showGoalSuggestion = goalsReady && !goal && !suggestionDismissed;
   const todayLabel = new Date().toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
@@ -141,6 +148,20 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
+          )}
+          {showGoalSuggestion && (
+            <GoalSuggestion
+              onPick={(target) => {
+                setGoal({ period: "daily", metric: "minutes", target });
+                showToast({
+                  message: `Objetivo: ${target} min por día`,
+                  actionLabel: "Deshacer",
+                  onAction: clearGoal,
+                });
+              }}
+              onCustom={() => router.push("/goals/configure")}
+              onDismiss={dismissSuggestion}
+            />
           )}
           <View style={{ flexDirection: "row" }}>
             <InlineStat icon="time-outline" value={todayStats.minutes} label="min hoy" color={colors.primary} />
@@ -247,6 +268,82 @@ export default function HomeScreen() {
         </View>
       )}
     </ScrollView>
+  );
+}
+
+const GOAL_PRESETS = [15, 30, 45];
+
+/** Primer uso sin objetivo: propone una meta diaria con un toque, sin pasar por el formulario. */
+function GoalSuggestion({
+  onPick,
+  onCustom,
+  onDismiss,
+}: {
+  onPick: (minutes: number) => void;
+  onCustom: () => void;
+  onDismiss: () => void;
+}) {
+  const colors = useTheme();
+  const chip = {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  };
+  return (
+    <View
+      style={{
+        marginBottom: spacing.md,
+        paddingBottom: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary }}>
+            ¿Te ponés un objetivo diario?
+          </Text>
+          <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 }}>
+            Un ratito por día ayuda a sostener el hábito.
+          </Text>
+        </View>
+        <AnimatedPressable
+          onPress={onDismiss}
+          accessibilityRole="button"
+          accessibilityLabel="Ahora no"
+          hitSlop={8}
+          style={{ padding: 4, marginLeft: spacing.sm }}
+        >
+          <Ionicons name="close" size={18} color={colors.textTertiary} />
+        </AnimatedPressable>
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md }}>
+        {GOAL_PRESETS.map((minutes) => (
+          <AnimatedPressable
+            key={minutes}
+            onPress={() => onPick(minutes)}
+            accessibilityRole="button"
+            accessibilityLabel={`${minutes} minutos por día`}
+            style={{ ...chip, backgroundColor: colors.primary }}
+          >
+            <Text style={{ color: colors.onPrimary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm }}>
+              {minutes} min
+            </Text>
+          </AnimatedPressable>
+        ))}
+        <AnimatedPressable
+          onPress={onCustom}
+          accessibilityRole="button"
+          style={{ ...chip, backgroundColor: colors.background }}
+        >
+          <Text style={{ color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm }}>
+            Otro…
+          </Text>
+        </AnimatedPressable>
+      </View>
+    </View>
   );
 }
 

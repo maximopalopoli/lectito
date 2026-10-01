@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import AnimatedPressable from '@/components/AnimatedPressable';
 import CircleIconButton from '@/components/CircleIconButton';
 import ScreenHeader from '@/components/ScreenHeader';
-import { useTheme } from '@/lib/theme';
+import { fontSize, fontWeight, radius, spacing, useTheme } from '@/lib/theme';
+import { deleteQuoteWithUndo } from '@/lib/undoableActions';
 import { useBooksStore } from '@/store/books';
 import { useQuotesStore } from '@/store/quotes';
 import type { QuoteColor } from '@/types';
@@ -18,6 +20,14 @@ const COLOR_HEX: Record<QuoteColor, string> = {
   purple: '#A78BFA',
 };
 
+/** Las citas más largas que esto se muestran recortadas, con "Ver más". */
+const LONG_QUOTE_CHARS = 280;
+const COLLAPSED_LINES = 6;
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function QuotesListScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
@@ -25,7 +35,6 @@ export default function QuotesListScreen() {
 
   const books = useBooksStore((s) => s.books);
   const allQuotes = useQuotesStore((s) => s.quotes);
-  const deleteQuote = useQuotesStore((s) => s.deleteQuote);
 
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
   const quotes = useMemo(
@@ -36,12 +45,17 @@ export default function QuotesListScreen() {
     [allQuotes, bookId],
   );
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Eliminar cita', 'Esta acción no se puede deshacer.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => deleteQuote(id) },
-    ]);
-  };
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const addQuote = () => router.push({ pathname: '/book/quote-form', params: { bookId } });
+  const handleDelete = (id: string) => deleteQuoteWithUndo(id);
 
   return (
     <ScrollView
@@ -54,65 +68,95 @@ export default function QuotesListScreen() {
           <CircleIconButton
             icon="add"
             label="Agregar cita"
-            onPress={() => router.push({ pathname: '/book/quote-form', params: { bookId } })}
+            onPress={addQuote}
           />
         }
       />
       {book && (
         <Text
           numberOfLines={1}
-          style={{ fontSize: 14, color: colors.textSecondary, paddingHorizontal: 24, marginTop: -4, marginBottom: 16 }}
+          style={{ fontSize: fontSize.md, color: colors.textSecondary, paddingHorizontal: spacing.xl, marginTop: -4, marginBottom: spacing.lg }}
         >
           {book.title}
         </Text>
       )}
 
-      <View style={{ paddingHorizontal: 24 }}>
+      <View style={{ paddingHorizontal: spacing.xl }}>
         {quotes.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingTop: 60 }}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>{"\u201C\u201D"}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 15, textAlign: 'center' }}>
-              Todavía no hay citas para este libro.{'\n'}Tocá + para agregar la primera.
+          <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: spacing.lg }}>
+            <Ionicons name="chatbox-ellipses-outline" size={48} color={colors.icon} />
+            <Text style={{ fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.textSecondary, marginTop: spacing.md }}>
+              Todavía no hay citas
             </Text>
-          </View>
-        ) : (
-          quotes.map((quote) => (
-            <View
-              key={quote.id}
+            <Text style={{ color: colors.textTertiary, fontSize: fontSize.md, textAlign: 'center', marginTop: spacing.xs, lineHeight: 20 }}>
+              {book?.epubUri
+                ? 'Guardá las frases que quieras recordar. También podés seleccionar texto mientras leés el ePub.'
+                : 'Guardá las frases que quieras recordar.'}
+            </Text>
+            <AnimatedPressable
+              onPress={addQuote}
+              haptic="light"
+              accessibilityRole="button"
               style={{
-                backgroundColor: colors.surface,
-                borderRadius: 10,
-                padding: 14,
-                marginBottom: 10,
-                borderLeftWidth: 4,
-                borderLeftColor: COLOR_HEX[quote.color],
+                marginTop: spacing.lg,
+                backgroundColor: colors.primary,
+                borderRadius: radius.lg,
+                minHeight: 48,
+                paddingHorizontal: spacing.xl,
+                justifyContent: 'center',
               }}
             >
-              <Text style={{ fontSize: 15, fontStyle: 'italic', lineHeight: 22, color: colors.textPrimary }}>
-                &ldquo;{quote.text}&rdquo;
+              <Text style={{ color: colors.onPrimary, fontWeight: fontWeight.semibold, fontSize: fontSize.base }}>
+                Agregar cita
               </Text>
-              {quote.pageNumber != null && (
-                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 6 }}>
-                  Pag. {quote.pageNumber}
-                </Text>
-              )}
-              {quote.note && (
-                <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 6 }}>
-                  {quote.note}
-                </Text>
-              )}
+            </AnimatedPressable>
+          </View>
+        ) : (
+          quotes.map((quote) => {
+            const isLong = quote.text.length > LONG_QUOTE_CHARS;
+            const isExpanded = expanded.has(quote.id);
+            const meta = [quote.pageNumber != null ? `Pág. ${quote.pageNumber}` : null, formatDate(quote.createdAt)]
+              .filter(Boolean)
+              .join(' · ');
+            return (
               <View
+                key={quote.id}
                 style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: 10,
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.lg,
+                  paddingTop: 14,
+                  paddingLeft: 14,
+                  paddingRight: spacing.xs,
+                  paddingBottom: spacing.xs,
+                  marginBottom: spacing.md,
+                  borderLeftWidth: 4,
+                  borderLeftColor: COLOR_HEX[quote.color],
                 }}
               >
-                <Text style={{ fontSize: 11, color: colors.textTertiary }}>
-                  {new Date(quote.createdAt).toLocaleDateString()}
+                <Text
+                  numberOfLines={isLong && !isExpanded ? COLLAPSED_LINES : undefined}
+                  style={{ fontSize: fontSize.base, fontStyle: 'italic', lineHeight: 22, color: colors.textPrimary, paddingRight: 10 }}
+                >
+                  &ldquo;{quote.text}&rdquo;
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 16 }}>
+                {isLong && (
+                  <Pressable
+                    onPress={() => toggleExpanded(quote.id)}
+                    accessibilityRole="button"
+                    style={{ alignSelf: 'flex-start', minHeight: 36, justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: colors.primary, fontSize: fontSize.sm, fontWeight: fontWeight.semibold }}>
+                      {isExpanded ? 'Ver menos' : 'Ver más'}
+                    </Text>
+                  </Pressable>
+                )}
+                {quote.note && (
+                  <Text style={{ fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 6, paddingRight: 10, lineHeight: 18 }}>
+                    {quote.note}
+                  </Text>
+                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs }}>
+                  <Text style={{ flex: 1, fontSize: fontSize.xs, color: colors.textTertiary }}>{meta}</Text>
                   <AnimatedPressable
                     onPress={() =>
                       router.push({
@@ -121,19 +165,25 @@ export default function QuotesListScreen() {
                       })
                     }
                     haptic="light"
+                    accessibilityRole="button"
+                    accessibilityLabel="Editar cita"
+                    style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <Text style={{ color: colors.primary, fontSize: 13 }}>Editar</Text>
+                    <Ionicons name="create-outline" size={20} color={colors.primary} />
                   </AnimatedPressable>
                   <AnimatedPressable
                     onPress={() => handleDelete(quote.id)}
                     haptic="medium"
+                    accessibilityRole="button"
+                    accessibilityLabel="Eliminar cita"
+                    style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <Text style={{ color: colors.danger, fontSize: 13 }}>Eliminar</Text>
+                    <Ionicons name="trash-outline" size={20} color={colors.danger} />
                   </AnimatedPressable>
                 </View>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </View>
     </ScrollView>

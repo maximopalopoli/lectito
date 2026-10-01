@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -24,6 +24,7 @@ import { radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { fetchBookByISBN, searchBooksByText } from "@/lib/openLibrary";
 import { searchBooksByText as searchGoogleBooks } from "@/lib/googleBooks";
+import { LIVE_SEARCH_DELAY_MS, looksLikeISBN, shouldLiveSearch } from "@/lib/bookSearch";
 import { parseEpub } from "@/lib/epubParser";
 import { persistEpub } from "@/lib/epubStorage";
 import type { BookSearchResult, BookStatus } from "@/types";
@@ -34,11 +35,6 @@ const SHELVES: { label: string; value: BookStatus }[] = [
   { label: "Leído", value: "DONE" },
   { label: "Abandonado", value: "DNF" },
 ];
-
-function looksLikeISBN(query: string): boolean {
-  const normalized = query.replace(/[-\s]/g, "");
-  return /^\d{10}(\d{3})?$/.test(normalized);
-}
 
 export default function AddBookScreen() {
   const router = useRouter();
@@ -54,16 +50,21 @@ export default function AddBookScreen() {
   const [status, setStatus] = useState<BookStatus>("TBR");
   const [showScanner, setShowScanner] = useState(false);
   const [epubUri, setEpubUri] = useState<string | null>(null);
+  // Cada búsqueda toma un número; solo la última puede escribir resultados (las respuestas llegan desordenadas).
+  const requestRef = useRef(0);
+  const lastSearchedRef = useRef("");
 
   const handleSearch = useCallback(
     async (overrideQuery?: string) => {
       const trimmed = (overrideQuery ?? query).trim();
       if (!trimmed) return;
+      const requestId = ++requestRef.current;
+      const isCurrent = () => requestId === requestRef.current;
+      lastSearchedRef.current = trimmed;
 
       setLoading(true);
       setError(null);
       setNotFound(false);
-      setResults([]);
       setSelected(null);
 
       try {
@@ -85,22 +86,46 @@ export default function AddBookScreen() {
           }
         }
 
+        if (!isCurrent()) return;
+        setResults(found);
         if (found.length === 0) {
           setNotFound(true);
         } else {
-          setResults(found);
           if (found.length === 1) {
             setSelected(found[0]);
           }
         }
       } catch (e) {
+        if (!isCurrent()) return;
+        setResults([]);
         setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
-        setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
     },
     [query],
   );
+
+  // Buscar mientras se escribe, con una pausa para no disparar una consulta por tecla.
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      // Al borrar la búsqueda se vuelve al estado inicial (y se descarta una búsqueda en curso).
+      if (lastSearchedRef.current) {
+        requestRef.current++;
+        lastSearchedRef.current = "";
+        setLoading(false);
+        setError(null);
+        setNotFound(false);
+        setResults([]);
+        setSelected(null);
+      }
+      return;
+    }
+    if (!shouldLiveSearch(trimmed) || trimmed === lastSearchedRef.current) return;
+    const timer = setTimeout(() => void handleSearch(trimmed), LIVE_SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [query, handleSearch]);
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -126,6 +151,7 @@ export default function AddBookScreen() {
 
       if (result.canceled || result.assets.length === 0) return;
 
+      requestRef.current++;
       setLoading(true);
       setError(null);
       setNotFound(false);
@@ -212,6 +238,9 @@ export default function AddBookScreen() {
                 color: colors.textPrimary,
               }}
             />
+            {loading && results.length > 0 && (
+              <ActivityIndicator size="small" color={colors.textTertiary} style={{ marginHorizontal: spacing.xs }} />
+            )}
             {query.length > 0 && (
               <Pressable
                 onPress={() => setQuery("")}
@@ -266,7 +295,7 @@ export default function AddBookScreen() {
         )}
 
         {/* Loading */}
-        {loading && (
+        {loading && results.length === 0 && (
           <ActivityIndicator
             size="large"
             color={colors.primary}
@@ -301,7 +330,7 @@ export default function AddBookScreen() {
         )}
 
         {/* Results list (when multiple and none selected) */}
-        {!loading && !error && results.length > 1 && !selected && (
+        {!error && results.length > 1 && !selected && (
           <View style={{ marginTop: spacing.xl }}>
             <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary, marginBottom: spacing.md }}>
               {results.length} resultados

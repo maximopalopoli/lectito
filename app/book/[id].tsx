@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -18,6 +17,7 @@ import StarRating from "@/components/StarRating";
 import TagBadge from "@/components/TagBadge";
 import TagsModal from "@/components/TagsModal";
 import { readingProgress } from "@/lib/progress";
+import { changeStatusWithUndo, deleteBookWithUndo } from "@/lib/undoableActions";
 import { useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useQuotesStore } from "@/store/quotes";
@@ -48,7 +48,6 @@ export default function BookDetailScreen() {
   const books = useBooksStore((s) => s.books);
   const updateBook = useBooksStore((s) => s.updateBook);
   const changeStatus = useBooksStore((s) => s.changeStatus);
-  const deleteBook = useBooksStore((s) => s.deleteBook);
   const allSessions = useSessionsStore((s) => s.sessions);
   const allQuotes = useQuotesStore((s) => s.quotes);
 
@@ -84,29 +83,14 @@ export default function BookDetailScreen() {
   const hasEpub = Boolean(book.epubUri);
   const openReader = () => router.push({ pathname: "/book/reader", params: { bookId: book.id } });
 
-  const confirmDelete = () => {
-    Alert.alert(
-      "Eliminar libro",
-      `¿Eliminar "${book.title}"? También se borran sus sesiones y citas. Esta acción no se puede deshacer.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: () => {
-            deleteBook(book.id);
-            goBack();
-          },
-        },
-      ],
-    );
+  // Sin confirmación previa: se aplica al instante y el toast ofrece "Deshacer".
+  const handleDelete = () => {
+    deleteBookWithUndo(book.id);
+    goBack();
   };
 
-  const confirmAbandon = () => {
-    Alert.alert("Abandonar libro", `¿Mover "${book.title}" a Abandonados? Podés retomarlo cuando quieras.`, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Abandonar", style: "destructive", onPress: () => changeStatus(book.id, "DNF") },
-    ]);
+  const handleAbandon = () => {
+    changeStatusWithUndo(book.id, "DNF", `Moviste “${book.title}” a Abandonados`);
   };
 
   const progress = readingProgress(book, readerPosition);
@@ -531,9 +515,9 @@ export default function BookDetailScreen() {
         {/* Low-emphasis / destructive actions */}
         <View style={{ marginTop: 32, alignItems: "center", gap: 4 }}>
           {book.status === "READING" && (
-            <TextButton label="Abandonar libro" color={colors.textSecondary} onPress={confirmAbandon} />
+            <TextButton label="Abandonar libro" color={colors.textSecondary} onPress={handleAbandon} />
           )}
-          <TextButton label="Eliminar de la biblioteca" color={colors.danger} onPress={confirmDelete} />
+          <TextButton label="Eliminar de la biblioteca" color={colors.danger} onPress={handleDelete} />
         </View>
       </View>
 
