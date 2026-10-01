@@ -17,7 +17,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.maximopalopoli.aleph",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -28,7 +33,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Aleph necesita acceso a la c\u00e1mara para escanear c\u00f3digos de barras de libros."
+          "cameraPermission": "Aleph necesita acceso a la cámara para escanear códigos de barras de libros."
         }
       ],
       [
@@ -47,6 +52,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3753a5f4-856a-434e-a29f-9a46e63bd19b"
+      }
+    },
+    "owner": "maximopalopoli"
   }
 }

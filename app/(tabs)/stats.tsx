@@ -67,15 +67,15 @@ export default function StatsScreen() {
           paddingHorizontal: 16,
         }}
       >
-        {/* Sin compartir (no hay nada que mostrar), pero el backup sigue a mano para restaurar. */}
+        {/* Sin compartir (no hay nada que mostrar), pero los ajustes y el backup siguen a mano. */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text numberOfLines={1} adjustsFontSizeToFit style={{ flexShrink: 1, fontSize: 28, fontWeight: "bold", color: colors.textPrimary }}>
             Estadísticas
           </Text>
           <CircleIconButton
-            icon="cloud-upload-outline"
-            label="Backup de datos"
-            onPress={() => router.push("/settings/backup")}
+            icon="settings-outline"
+            label="Ajustes"
+            onPress={() => router.push("/settings")}
           />
         </View>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 16, paddingBottom: 60 }}>
@@ -127,9 +127,9 @@ export default function StatsScreen() {
             onPress={() => router.push("/share-stats")}
           />
           <CircleIconButton
-            icon="cloud-upload-outline"
-            label="Backup de datos"
-            onPress={() => router.push("/settings/backup")}
+            icon="settings-outline"
+            label="Ajustes"
+            onPress={() => router.push("/settings")}
           />
         </View>
       </View>

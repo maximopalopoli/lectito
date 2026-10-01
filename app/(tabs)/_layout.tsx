@@ -1,10 +1,16 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/lib/theme";
+import { useProfileStore } from "@/store/profile";
 
 export default function TabsLayout() {
   const colors = useTheme();
+  const profileReady = useProfileStore((s) => s._hydrated);
+  const welcomeDone = useProfileStore((s) => s.welcomeDone);
+
+  if (profileReady && !welcomeDone) return <Redirect href="/welcome" />;
+
   return (
     <Tabs
       screenOptions={{

@@ -9,6 +9,7 @@ import { useGoalsStore } from "@/store/goals";
 import { useReaderSettingsStore } from "@/store/readerSettings";
 import { useRecommendationsStore } from "@/store/recommendations";
 import { useListsStore } from "@/store/lists";
+import { useProfileStore } from "@/store/profile";
 import { useStorageHealthStore } from "@/lib/storageHealth";
 import { repairEpubCovers } from "@/lib/repairEpubCovers";
 import Toast from "@/components/Toast";
@@ -22,11 +23,12 @@ export default function RootLayout() {
   const readerReady = useReaderSettingsStore((s) => s._hydrated);
   const recommendationsReady = useRecommendationsStore((s) => s._hydrated);
   const listsReady = useListsStore((s) => s._hydrated);
+  const profileReady = useProfileStore((s) => s._hydrated);
   const readError = useStorageHealthStore((s) => s.readError);
   const writeError = useStorageHealthStore((s) => s.writeError);
   const backgroundColor = scheme === "dark" ? "#111111" : "#ffffff";
   const color = scheme === "dark" ? "#ffffff" : "#111111";
-  const hydrated = booksReady && sessionsReady && quotesReady && goalsReady && readerReady && recommendationsReady && listsReady;
+  const hydrated = booksReady && sessionsReady && quotesReady && goalsReady && readerReady && recommendationsReady && listsReady && profileReady;
 
   useEffect(() => {
     if (booksReady) void repairEpubCovers();
@@ -48,7 +50,9 @@ export default function RootLayout() {
           <Stack.Screen name="book/add" options={{ headerShown: false }} />
           <Stack.Screen name="session/[bookId]" options={{ headerShown: false }} />
           <Stack.Screen name="goals/configure" options={{ headerShown: false }} />
+          <Stack.Screen name="settings/index" options={{ headerShown: false }} />
           <Stack.Screen name="settings/backup" options={{ headerShown: false }} />
+          <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="share-stats" options={{ headerShown: false }} />
           <Stack.Screen name="book/share" options={{ headerShown: false }} />
           <Stack.Screen name="book/quotes" options={{ headerShown: false }} />

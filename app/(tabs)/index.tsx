@@ -13,6 +13,7 @@ import { showToast } from "@/lib/toast";
 import { fontSize, fontWeight, radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
 import { useGoalsStore } from "@/store/goals";
+import { useProfileStore } from "@/store/profile";
 import { useReaderSettingsStore } from "@/store/readerSettings";
 import { useSessionsStore } from "@/store/sessions";
 import type { Book } from "@/types/book";
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const sessions = useSessionsStore((s) => s.sessions);
   const books = useBooksStore((s) => s.books);
   const goal = useGoalsStore((s) => s.goal);
+  const name = useProfileStore((s) => s.name);
   const goalsReady = useGoalsStore((s) => s._hydrated);
   const suggestionDismissed = useGoalsStore((s) => s.suggestionDismissed);
   const setGoal = useGoalsStore((s) => s.setGoal);
@@ -83,13 +85,15 @@ export default function HomeScreen() {
       >
         <View style={{ flex: 1 }}>
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
               fontSize: fontSize.display,
               fontWeight: fontWeight.bold,
               color: colors.textPrimary,
             }}
           >
-            ¡Hola!
+            {name ? `¡Hola, ${name}!` : "¡Hola!"}
           </Text>
           <Text
             style={{
