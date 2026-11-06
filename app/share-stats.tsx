@@ -57,7 +57,7 @@ export default function ShareStatsScreen() {
         onPress={() => captureAndShare(viewShotRef)}
         haptic="medium"
         style={{
-          backgroundColor: '#007AFF',
+          backgroundColor: '#B4532A',
           paddingVertical: 14,
           paddingHorizontal: 40,
           borderRadius: 12,

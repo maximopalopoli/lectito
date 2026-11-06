@@ -14,7 +14,7 @@ export const lightColors = {
   background: "#fff",
   surface: "#f5f5f5",
   surfaceAlt: "#f9f9f9",
-  surfaceTint: "#f0f7ff", // fondo de botón celeste suave
+  surfaceTint: "#fdf3ee", // fondo de botón terracota suave
   card: "#fff", // tarjetas elevadas / modales sobre el backdrop
 
   // Texto
@@ -24,8 +24,9 @@ export const lightColors = {
   textMuted: "#666",
 
   // Marca / semántico
-  primary: "#0066CC",
-  primaryTint: "#EBF2FF",
+  // Terracota: color propio de Aleph (papel, tapas de cuero), contraste 5:1 sobre blanco.
+  primary: "#B4532A",
+  primaryTint: "#FBEDE6",
   // Variantes "accesibles" de iOS: contraste suficiente como texto sobre blanco.
   success: "#248A3D",
   warning: "#B85C00",
@@ -40,8 +41,8 @@ export const lightColors = {
   track: "#ddd", // fondo de barras de progreso
 
   // Chip de tag
-  tagText: "#1A73E8",
-  tagBg: "#E8F0FE",
+  tagText: "#9A4422",
+  tagBg: "#FBEDE6",
 
   // Texto sobre color
   onPrimary: "#fff",
@@ -57,7 +58,7 @@ export const darkColors: ThemeColors = {
   background: "#000",
   surface: "#1c1c1e",
   surfaceAlt: "#2c2c2e",
-  surfaceTint: "#0a2540",
+  surfaceTint: "#3a2118",
   card: "#1c1c1e",
 
   // Texto
@@ -66,9 +67,9 @@ export const darkColors: ThemeColors = {
   textTertiary: "#8e8e93",
   textMuted: "#8e8e93",
 
-  // Marca / semántico (variantes dark de iOS)
-  primary: "#0A84FF",
-  primaryTint: "#0a2a4a",
+  // Marca: terracota aclarado para fondo negro; semánticos: variantes dark de iOS
+  primary: "#E8875B",
+  primaryTint: "#3a2118",
   success: "#30D158",
   warning: "#FF9F0A",
   danger: "#FF453A",
@@ -82,11 +83,11 @@ export const darkColors: ThemeColors = {
   track: "#3a3a3c",
 
   // Chip de tag
-  tagText: "#8AB4F8",
-  tagBg: "#1e3a5f",
+  tagText: "#F0A784",
+  tagBg: "#3a2118",
 
   // Texto sobre color
-  onPrimary: "#fff",
+  onPrimary: "#1c1c1e", // el terracota claro necesita texto oscuro
 
   // Tint neutro para íconos de placeholder / estados vacíos
   icon: "#5a5a5e",

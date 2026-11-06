@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 
 import AnimatedPressable from "@/components/AnimatedPressable";
 import BookCard from "@/components/BookCard";
+import CircleIconButton from "@/components/CircleIconButton";
 import SearchBar from "@/components/SearchBar";
 import FilterBar from "@/components/FilterBar";
 import { spacing, useTheme } from "@/lib/theme";
@@ -139,23 +140,11 @@ export default function LibraryScreen() {
                 <Ionicons name="compass-outline" size={20} color={colors.primary} />
               </AnimatedPressable>
             )}
-            <AnimatedPressable
+            <CircleIconButton
+              icon="add"
+              label="Agregar libro"
               onPress={() => router.push("/book/add")}
-              accessibilityRole="button"
-              accessibilityLabel="Agregar libro"
-              haptic="medium"
-              scaleDown={0.9}
-              style={{
-                backgroundColor: colors.primary,
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: colors.onPrimary, fontSize: 20, fontWeight: "bold", marginTop: -2 }}>+</Text>
-            </AnimatedPressable>
+            />
           </View>
         </View>
 

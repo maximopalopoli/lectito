@@ -655,5 +655,10 @@ function HeaderIconButton({
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("es-AR", {
+    day: "numeric",
+    month: "short",
+    // El año solo cuando no es el actual: "30 oct", "12 mar 2025".
+    year: new Date(iso).getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  });
 }

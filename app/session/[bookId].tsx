@@ -20,10 +20,13 @@ import BookCover from "@/components/BookCover";
 import ScreenHeader from "@/components/ScreenHeader";
 import { confirmThen } from "@/lib/confirm";
 import { readingProgress } from "@/lib/progress";
+import { getGoalProgress } from "@/lib/stats";
 import { recordSession } from "@/lib/recordSession";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { useBooksStore } from "@/store/books";
+import { useGoalsStore } from "@/store/goals";
 import { useReaderSettingsStore } from "@/store/readerSettings";
+import { useSessionsStore } from "@/store/sessions";
 
 type TimerStatus = "IDLE" | "RUNNING" | "PAUSED" | "STOPPED";
 
@@ -56,6 +59,16 @@ export default function SessionScreen() {
 
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
   const readerPosition = useReaderSettingsStore((s) => (bookId ? s.positions[bookId] : undefined));
+  const goal = useGoalsStore((s) => s.goal);
+  const sessions = useSessionsStore((s) => s.sessions);
+  const goalLabel = useMemo(() => {
+    if (!goal) return null;
+    const { current, target } = getGoalProgress(sessions, goal);
+    const unit = goal.metric === "minutes" ? "min" : "pág";
+    const period = goal.period === "daily" ? "Hoy" : "Esta semana";
+    if (current >= target) return `${period} ya cumpliste tu objetivo de ${target} ${unit}`;
+    return `${period} llevás ${current} de ${target} ${unit}`;
+  }, [goal, sessions]);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [status, setStatus] = useState<TimerStatus>("IDLE");
@@ -272,6 +285,11 @@ export default function SessionScreen() {
             >
               {formatTime(elapsedSeconds)}
             </Text>
+            {goalLabel && (
+              <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: spacing.md }}>
+                {goalLabel}
+              </Text>
+            )}
           </View>
 
           {/* Controls */}

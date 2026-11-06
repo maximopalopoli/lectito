@@ -139,7 +139,7 @@ export default function StatsScreen() {
       <View style={{ flexDirection: "row", gap: 10 }}>
         <StatCard label="minutos" value={weekly.totalMinutes} />
         <StatCard label="sesiones" value={weekly.totalSessions} />
-        <StatCard label="pág/día" value={pagesPerDay7} hint={`30 d: ${pagesPerDay30}`} />
+        <StatCard label="pág por día" value={Math.round(pagesPerDay7)} hint={`${Math.round(pagesPerDay30)} en 30 días`} />
       </View>
 
       {/* Goal progress */}

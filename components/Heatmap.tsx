@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 
 import type { HeatmapDay } from "@/lib/stats";
-import { useTheme } from "@/lib/theme";
+import { darkColors, useTheme } from "@/lib/theme";
 
 const ROW_LABELS = ["", "Lun", "", "Mié", "", "Vie", ""];
 const LABEL_WIDTH_RATIO = 0.08; // % of container for day labels
@@ -17,7 +17,11 @@ interface HeatmapProps {
 export default function Heatmap({ data }: HeatmapProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const colors = useTheme();
-  const levelColors = [colors.track, "#9be9a8", "#40c463", "#30a14e"];
+  // Más lectura = más contraste con el fondo: en oscuro los verdes van de apagado a brillante.
+  const levelColors =
+    colors === darkColors
+      ? [colors.track, "#0e4429", "#26a641", "#39d353"]
+      : [colors.track, "#9be9a8", "#40c463", "#216e39"];
 
   if (data.length === 0) return null;
 
