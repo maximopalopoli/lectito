@@ -7,14 +7,12 @@ stored on the device. Think "Strava for readers" without the social network.
 > **Status:** personal project in use on my Android phone. The UI is in
 > Spanish.
 
-<!-- TODO: add the screenshots to docs/ and uncomment
 <p>
-  <img src="docs/home.png" width="200" alt="Home: daily goal, streak and current book">
+  <img src="docs/home.png" width="200" alt="Home: daily goal, streak and current books">
   <img src="docs/library.png" width="200" alt="Library with shelves and filters">
-  <img src="docs/stats.png" width="200" alt="Statistics with heatmap and books per month">
-  <img src="docs/reader.png" width="200" alt="ePub reader with sepia theme">
+  <img src="docs/stats.png" width="200" alt="Statistics with weekly totals, goal, streak and heatmap">
+  <img src="docs/book.png" width="200" alt="Book detail with progress and session history">
 </p>
--->
 
 ## What it does
 
