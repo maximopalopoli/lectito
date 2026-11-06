@@ -1,5 +1,5 @@
 /**
- * Design tokens para Aleph.
+ * Design tokens para Lectito.
  *
  * `spacing`, `radius`, `fontSize` y `fontWeight` son constantes (no dependen del
  * tema). Los colores tienen una paleta clara y una oscura con las mismas claves;
@@ -24,7 +24,7 @@ export const lightColors = {
   textMuted: "#666",
 
   // Marca / semántico
-  // Terracota: color propio de Aleph (papel, tapas de cuero), contraste 5:1 sobre blanco.
+  // Terracota: color propio de Lectito (papel, tapas de cuero), contraste 5:1 sobre blanco.
   primary: "#B4532A",
   primaryTint: "#FBEDE6",
   // Variantes "accesibles" de iOS: contraste suficiente como texto sobre blanco.

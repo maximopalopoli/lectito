@@ -44,7 +44,7 @@ export default function WelcomeScreen() {
           Te damos la bienvenida
         </Text>
         <Text style={{ fontSize: fontSize.base, color: colors.textSecondary, marginTop: spacing.sm, marginBottom: spacing.xl }}>
-          Aleph te ayuda a seguir lo que leés: tus libros, tus sesiones y tus citas favoritas.
+          Lectito te ayuda a seguir lo que leés: tus libros, tus sesiones y tus citas favoritas.
         </Text>
 
         <Text style={{ fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary, marginBottom: spacing.sm }}>

@@ -41,7 +41,7 @@ export default function BarcodeScanner({
             <Text style={[styles.message, { color: colors.textPrimary }]}>
               {blocked
                 ? "El acceso a la cámara está desactivado. Activalo desde los ajustes para escanear códigos de barras."
-                : "Aleph necesita acceso a la cámara para escanear códigos de barras."}
+                : "Lectito necesita acceso a la cámara para escanear códigos de barras."}
             </Text>
             <Pressable
               onPress={blocked ? () => void Linking.openSettings() : requestPermission}

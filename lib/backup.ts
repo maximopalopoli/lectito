@@ -109,7 +109,7 @@ export async function exportBackup(destination: 'share' | 'save' = 'share'): Pro
   });
   await Sharing.shareAsync(filePath, {
     mimeType: 'application/json',
-    dialogTitle: 'Exportar backup de Aleph',
+    dialogTitle: 'Exportar backup de Lectito',
   });
   return { saved: true, skippedEpubs };
 }
@@ -135,7 +135,7 @@ export async function importBackup(): Promise<{ books: number; sessions: number;
     !('books' in data) ||
     !('sessions' in data)
   ) {
-    throw new Error('El archivo no es un backup válido de Aleph');
+    throw new Error('El archivo no es un backup válido de Lectito');
   }
 
   const backup = data as Partial<BackupData>;

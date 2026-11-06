@@ -1,4 +1,4 @@
-# Aleph
+# Lectito
 
 A private reading tracker built with React Native and Expo: log reading
 sessions, track progress and streaks, keep quotes, and read ePub books, all
