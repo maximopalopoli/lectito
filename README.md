@@ -1,44 +1,74 @@
 # Aleph
 
-Aleph is a personal reading app: a private library for tracking reading sessions, progress, and habits. The original idea is a "Strava for readers" without a social network. Its promise is simple: add books quickly, track how much you read, and keep a record of your reading journey.
+A private reading tracker built with React Native and Expo: log reading
+sessions, track progress and streaks, keep quotes, and read ePub books, all
+stored on the device. Think "Strava for readers" without the social network.
 
-## Current features
+> **Status:** personal project in use on my Android phone. The UI is in
+> Spanish.
 
-- A library with **Want to Read**, **Reading**, **Read**, and **Did Not Finish** shelves, plus custom lists. Search by title or author and filter by tags and rating.
-- Add books by ISBN or text using Open Library and Google Books, scan barcodes, or import ePub files.
-- Timed reading sessions with pause, focus mode, pages read, and optional notes; per-book progress and session history.
-- Statistics for reading time, sessions, pages, streaks, a heatmap, books per month, and configurable goals.
-- Ratings, reviews, tags, quotes, and highlights; shareable cards without a social network.
-- An ePub reader with themes, typography, saved position, and highlights. JSON backups include books, custom lists, sessions, quotes, goals, reader settings, and ePub files.
+<!-- TODO: add the screenshots to docs/ and uncomment
+<p>
+  <img src="docs/home.png" width="200" alt="Home: daily goal, streak and current book">
+  <img src="docs/library.png" width="200" alt="Library with shelves and filters">
+  <img src="docs/stats.png" width="200" alt="Statistics with heatmap and books per month">
+  <img src="docs/reader.png" width="200" alt="ePub reader with sepia theme">
+</p>
+-->
 
-Data is stored on the device. There are no accounts or cross-device sync yet; manual backups can be used to move data. See [ROADMAP.md](ROADMAP.md) for feature status and priorities, and [QUALITY.md](QUALITY.md) for the product quality review.
+## What it does
 
-## Tech stack and structure
+- Library with Want to Read, Reading, Read and Did Not Finish shelves, custom
+  lists, tags, ratings and reviews; search and filters.
+- Add books by ISBN barcode scan or text search (Open Library, Google Books),
+  or import an ePub.
+- Timed reading sessions with pause, pages read and notes; streaks, a
+  heatmap, books per month and daily or weekly goals.
+- Built-in ePub reader with themes, fonts, saved position and highlights.
+- Quotes and shareable cards, without accounts or a feed.
 
-- React Native + Expo SDK 54, Expo Router v6, and strict TypeScript.
-- Zustand for state management; AsyncStorage for local persistence.
-- Open Library for ISBN lookup and search, with Google Books as an alternative.
-- `app/`: screens and routes; `components/`: shared components; `store/`: state and persistence; `types/`: data models; `lib/`: APIs, ePub, statistics, and backups; `assets/`: icons and images.
-- The `@/*` import alias points to the project root. The app follows the system light/dark theme; the ePub reader has its own theme.
+## Technical highlights
 
-The core models are `Book` (metadata, shelf, current page, review, and tags), `Session` (book, start and end times, duration, pages, and note), and `Quote` (text, note, color, and location). Daily statistics are derived from sessions. The definitions in `types/` are the source of truth for the current schema.
+- **Local-first, no backend.** All data lives on the device; the only network
+  calls are book lookups and recommendations, and the screens that make them
+  say so.
+- **Versioned local data.** Stored data carries a schema version; pending
+  migrations run before any store loads and are saved in one write, and data
+  from a newer app version is refused instead of overwritten.
+- **Atomic writes.** A session and the book progress it updates are written in
+  one storage call; a backup restore replaces every store in one write and
+  only updates memory after it succeeds.
+- **Offline ePub reader.** epub.js and JSZip are bundled, so books open in
+  airplane mode.
+- **Portable backups.** A versioned JSON format that includes ePub files and
+  lists; older formats still import.
+- **Tested.** 85 Jest tests covering storage failures, backups, migrations
+  and statistics; CI runs lint, type-checking and tests.
 
-## Run and verify
+**Stack:** React Native 0.86, Expo SDK 57, Expo Router, TypeScript (strict),
+Zustand, AsyncStorage, epub.js, Jest, EAS Build, GitHub Actions.
+
+## Run
 
 ```bash
 npm install
-npm start
+npm start                        # Expo dev server; press a for Android
+npm test
+npm run lint && npm run typecheck
 ```
 
-| Command | Purpose |
-| --- | --- |
-| `npm run android` | Open on Android |
-| `npm run ios` | Open on iOS |
-| `npm run web` | Open in a browser |
-| `npm run lint` | Lint screens and components |
-| `npm run typecheck` | Type-check the whole project |
-| `npm test -- --runInBand` | Run tests |
+Build an installable APK with `eas build -p android --profile preview`.
 
-CI runs lint, type-checking, and tests. Book lookups use `https://openlibrary.org/isbn/{isbn}.json` and `https://www.googleapis.com/books/v1/volumes?q={query}`. The app remains local-first; Firebase and Supabase are possible future options, not current dependencies.
+## Structure
 
-Navigation follows the file structure in `app/`. Update [ROADMAP.md](ROADMAP.md) when product plans or acceptance criteria change. Expo documentation is available at [docs.expo.dev](https://docs.expo.dev/).
+- `app/`: screens, with file-based routes.
+- `components/`: shared UI.
+- `store/`: Zustand stores and persistence.
+- `lib/`: book APIs, ePub, statistics, backups and migrations.
+- `types/`: data models, the source of truth for the stored schema.
+
+## Privacy
+
+Book search and barcode scans send the query or ISBN to Open Library and
+Google Books; recommendations send the chosen books' ISBNs and authors to
+Open Library. Backups are plain JSON and are not encrypted.
